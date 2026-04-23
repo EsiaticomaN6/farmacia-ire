@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Farmacia IRE</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<!-- Quagga2: barcode reader compatible con Safari/iOS -->
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -358,73 +359,83 @@ tbody td{padding:10px 14px;vertical-align:middle}
 }
 #scanner-overlay.open{display:flex;}
 #scanner-box{
-  background:#1a1f3c;border-radius:18px;padding:0;overflow:hidden;
-  width:min(92vw,420px);box-shadow:0 16px 60px rgba(0,0,0,.6);
+  background:#1a1f3c;border-radius:18px;overflow:hidden;
+  width:min(94vw,440px);box-shadow:0 16px 60px rgba(0,0,0,.6);
   display:flex;flex-direction:column;
 }
 #scanner-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);
+  padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;
 }
 #scanner-header h3{color:#fff;font-size:15px;font-weight:700;margin:0;}
 #scanner-close-btn{
-  background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;
+  background:none;border:none;color:rgba(255,255,255,.5);font-size:24px;
   cursor:pointer;line-height:1;padding:0 4px;
 }
 #scanner-close-btn:hover{color:#fff;}
 #scanner-video-wrap{
   position:relative;background:#000;overflow:hidden;
-  aspect-ratio:4/3;width:100%;
+  width:100%;aspect-ratio:4/3;
 }
-#scanner-video{width:100%;height:100%;object-fit:cover;display:block;}
+#scanner-video-wrap video,
+#scanner-video-wrap canvas{
+  position:absolute;inset:0;width:100%!important;height:100%!important;
+  object-fit:cover;
+}
+/* Ocultar el canvas de dibujo de Quagga (overlay de detección) */
+#scanner-video-wrap canvas.drawingBuffer{opacity:0;}
 #scanner-aim{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  pointer-events:none;
+  position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;pointer-events:none;z-index:2;
 }
 #scanner-aim-inner{
-  width:70%;max-width:260px;height:80px;position:relative;
+  width:72%;max-width:280px;height:90px;position:relative;
 }
 #scanner-aim-inner::before,#scanner-aim-inner::after,
 #scanner-aim-inner span::before,#scanner-aim-inner span::after{
-  content:'';position:absolute;width:22px;height:22px;border-color:#3b5bdb;border-style:solid;
+  content:'';position:absolute;width:22px;height:22px;
+  border-color:#3b5bdb;border-style:solid;
 }
 #scanner-aim-inner::before{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
 #scanner-aim-inner::after{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
 #scanner-aim-inner span::before{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
 #scanner-aim-inner span::after{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
 #scanner-line{
-  position:absolute;left:10%;right:10%;height:2px;background:#3b5bdb;
-  top:50%;transform:translateY(-50%);
-  animation:scanner-sweep 2s ease-in-out infinite;
-  box-shadow:0 0 8px #3b5bdb;
+  position:absolute;left:5%;right:5%;height:2px;
+  background:linear-gradient(90deg,transparent,#3b5bdb,transparent);
+  box-shadow:0 0 10px #3b5bdb,0 0 20px rgba(59,91,219,.4);
+  animation:scanner-sweep 1.8s ease-in-out infinite;
 }
-@keyframes scanner-sweep{
-  0%,100%{top:15%;}50%{top:85%;}
-}
+@keyframes scanner-sweep{0%,100%{top:10%;}50%{top:90%;}}
 #scanner-status{
-  padding:12px 18px;text-align:center;color:rgba(255,255,255,.6);
-  font-size:13px;min-height:44px;display:flex;align-items:center;justify-content:center;
+  padding:12px 18px;text-align:center;font-size:13px;min-height:46px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  color:rgba(255,255,255,.6);transition:color .2s;
 }
 #scanner-status.found{color:#2f9e44;font-weight:700;}
-#scanner-status.notfound{color:#e03131;font-weight:600;}
+#scanner-status.notfound{color:#e67700;font-weight:600;}
+#scanner-status.error{color:#e03131;font-weight:600;}
 #scanner-manual-row{
-  padding:0 18px 16px;display:flex;gap:8px;
+  padding:0 18px 18px;display:flex;gap:8px;flex-shrink:0;
 }
 #scanner-manual-input{
-  flex:1;padding:8px 12px;border-radius:8px;border:1.5px solid rgba(255,255,255,.15);
-  background:rgba(255,255,255,.06);color:#fff;font-size:14px;font-family:inherit;
+  flex:1;padding:9px 12px;border-radius:8px;
+  border:1.5px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);color:#fff;
+  font-size:14px;font-family:inherit;
 }
 #scanner-manual-input::placeholder{color:rgba(255,255,255,.3);}
+#scanner-manual-input:focus{outline:none;border-color:#3b5bdb;}
 #scanner-manual-btn{
-  background:#3b5bdb;color:#fff;border:none;padding:8px 16px;
+  background:#3b5bdb;color:#fff;border:none;padding:9px 18px;
   border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;
+  white-space:nowrap;
 }
-/* ── botón de cámara en cada sección ── */
 .scan-cam-btn{
   display:flex;align-items:center;justify-content:center;
-  width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);
-  background:var(--card);cursor:pointer;font-size:18px;flex-shrink:0;
-  transition:all .15s;
+  width:36px;height:36px;border-radius:8px;
+  border:1.5px solid var(--border);background:var(--card);
+  cursor:pointer;font-size:18px;flex-shrink:0;transition:all .15s;
 }
 .scan-cam-btn:hover{background:var(--accent);border-color:var(--accent);}
 /* ══════════════════════════════════════════════════════ */
@@ -511,7 +522,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
             <input id="pos-q" type="text" placeholder="🔍  Buscar por nombre o código de barras…" oninput="posSearch()" onkeydown="posKey(event)" onfocus="posRestoreGrid()" autocomplete="off">
             <div class="ac-drop" id="pos-ac"></div>
           </div>
-          <button class="scan-cam-btn" onclick="scannerOpen('pos')" title="Escanear código de barras">📷</button>
+          <button class="scan-cam-btn" onclick="scannerOpen('pos')" title="Escanear">📷</button>
           <select id="pos-dept" onchange="posRenderGrid()">
             <option value="">Todos los deptos.</option>
           </select>
@@ -580,7 +591,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <div id="page-inv" class="page">
       <div class="inv-bar">
         <input id="inv-q" type="text" placeholder="🔍  Buscar producto…" oninput="invRender()" style="width:210px">
-        <button class="scan-cam-btn" onclick="scannerOpen('inv')" title="Escanear código de barras">📷</button>
+        <button class="scan-cam-btn" onclick="scannerOpen('inv')" title="Escanear">📷</button>
         <select id="inv-dept" onchange="invRender()"><option value="">Todos los deptos.</option></select>
         <select id="inv-stock-f" onchange="invRender()">
           <option value="">Todo el stock</option>
@@ -753,7 +764,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
               oninput="cqRender()" autocomplete="off"
               style="width:100%;padding-left:14px;font-size:14px">
           </div>
-          <button class="scan-cam-btn" onclick="scannerOpen('consulta')" title="Escanear código de barras">📷</button>
+          <button class="scan-cam-btn" onclick="scannerOpen('consulta')" title="Escanear">📷</button>
           <span id="cq-count" style="font-size:12px;color:var(--text2)"></span>
           <button class="btn btn-outline btn-sm" onclick="document.getElementById('cq-input').value='';cqRender()">✕ Limpiar</button>
         </div>
@@ -2864,17 +2875,17 @@ renderLoginUsers();
       <button id="scanner-close-btn" onclick="scannerClose()">×</button>
     </div>
     <div id="scanner-video-wrap">
-      <video id="scanner-video" autoplay playsinline muted></video>
       <div id="scanner-aim">
         <div id="scanner-aim-inner"><span></span></div>
         <div id="scanner-line"></div>
       </div>
     </div>
-    <div id="scanner-status">Apunta el código de barras al recuadro…</div>
+    <div id="scanner-status">Iniciando cámara…</div>
     <div id="scanner-manual-row">
-      <input id="scanner-manual-input" type="text" placeholder="O escribe el código manualmente…"
+      <input id="scanner-manual-input" type="text" inputmode="numeric"
+        placeholder="O escribe el código aquí…"
         onkeydown="if(event.key==='Enter')scannerManualSubmit()">
-      <button id="scanner-manual-btn" onclick="scannerManualSubmit()">OK</button>
+      <button id="scanner-manual-btn" onclick="scannerManualSubmit()">Buscar</button>
     </div>
   </div>
 </div>
@@ -2883,182 +2894,186 @@ renderLoginUsers();
 
 <script>
 /* ════════════════════════════════════════════════════════
-   FARMACIA IRE — Scanner de Código de Barras
-   Usa ZXing-js para decodificación en cámara + entrada manual
+   Farmacia IRE — Scanner con Quagga2
+   Compatible con Safari iOS/iPadOS
    ════════════════════════════════════════════════════════ */
 (function(){
   'use strict';
 
-  var _context = null;   // 'pos' | 'inv' | 'consulta'
-  var _reader   = null;
-  var _stream   = null;
-  var _scanning = false;
+  var _context  = null;
+  var _running  = false;
   var _lastCode = null;
+  var _debounce = null;
 
-  /* ── Abrir escáner ─────────────────────────────────── */
+  /* ── Abrir ─────────────────────────────────────────── */
   window.scannerOpen = function(context) {
-    _context = context;
+    _context  = context;
     _lastCode = null;
     document.getElementById('scanner-overlay').classList.add('open');
-    document.getElementById('scanner-status').textContent = 'Apunta el código de barras al recuadro…';
-    document.getElementById('scanner-status').className = '';
+    _setStatus('Iniciando cámara…', '');
     document.getElementById('scanner-manual-input').value = '';
-    _startCamera();
+    _startQuagga();
   };
 
-  /* ── Cerrar escáner ────────────────────────────────── */
+  /* ── Cerrar ────────────────────────────────────────── */
   window.scannerClose = function() {
-    _stopCamera();
+    _stopQuagga();
     document.getElementById('scanner-overlay').classList.remove('open');
     _context = null;
   };
 
-  /* ── Iniciar cámara y lector ───────────────────────── */
-  function _startCamera() {
-    if (_scanning) return;
+  /* ── Iniciar Quagga2 ───────────────────────────────── */
+  function _startQuagga() {
+    if (_running) { _stopQuagga(); }
 
-    // Verificar que ZXing esté disponible
-    if (typeof ZXing === 'undefined') {
-      _setStatus('⚠️ Librería de escaneo no cargada. Usa entrada manual.', 'notfound');
+    if (typeof Quagga === 'undefined') {
+      _setStatus('⚠️ Librería no cargada. Usa entrada manual.', 'error');
       return;
     }
 
-    var constraints = {
-      video: {
-        facingMode: { ideal: 'environment' }, // cámara trasera en móvil
-        width:  { ideal: 1280 },
-        height: { ideal: 720 },
-      }
-    };
+    var wrap = document.getElementById('scanner-video-wrap');
 
-    navigator.mediaDevices.getUserMedia(constraints)
-      .then(function(stream) {
-        _stream = stream;
-        _scanning = true;
-        var video = document.getElementById('scanner-video');
-        video.srcObject = stream;
-        video.play();
-        _startZXing(video);
-      })
-      .catch(function(err) {
-        console.warn('[Scanner] Camera error:', err);
-        if (err.name === 'NotAllowedError') {
-          _setStatus('⚠️ Permiso de cámara denegado. Usa entrada manual.', 'notfound');
+    Quagga.init({
+      inputStream: {
+        name: 'Live',
+        type: 'LiveStream',
+        target: wrap,
+        constraints: {
+          width:  { min: 640, ideal: 1280 },
+          height: { min: 480, ideal: 720 },
+          facingMode: 'environment',   // cámara trasera
+          aspectRatio: { ideal: 4/3 },
+        },
+        area: {           // zona de detección (centro 60%)
+          top:    '20%',
+          right:  '10%',
+          left:   '10%',
+          bottom: '20%',
+        },
+      },
+      locator: {
+        patchSize: 'medium',
+        halfSample: true,
+      },
+      numOfWorkers: 0,    // 0 = sin Web Workers (necesario en Safari)
+      frequency: 10,      // intentos por segundo
+      decoder: {
+        readers: [
+          'ean_reader',           // EAN-13 (más común en farmacias MX)
+          'ean_8_reader',
+          'upc_reader',           // UPC-A
+          'upc_e_reader',
+          'code_128_reader',
+          'code_39_reader',
+        ],
+        multiple: false,
+      },
+      locate: true,
+    }, function(err) {
+      if (err) {
+        console.error('[Scanner] Quagga init error:', err);
+        if (err.name === 'NotAllowedError' || (err.message && err.message.includes('Permission'))) {
+          _setStatus('⚠️ Permiso de cámara denegado. Usa entrada manual.', 'error');
         } else if (err.name === 'NotFoundError') {
-          _setStatus('⚠️ No se encontró cámara. Usa entrada manual.', 'notfound');
+          _setStatus('⚠️ No se encontró cámara. Usa entrada manual.', 'error');
         } else {
-          _setStatus('⚠️ Error de cámara. Usa entrada manual.', 'notfound');
+          _setStatus('⚠️ Error: ' + (err.message || err) + '. Usa entrada manual.', 'error');
         }
-      });
+        return;
+      }
+      _running = true;
+      Quagga.start();
+      _setStatus('Apunta el código al recuadro…', '');
+    });
+
+    /* ── Callback de código detectado ─────────────────── */
+    Quagga.onDetected(function(result) {
+      if (!_running) return;
+      var code = result && result.codeResult && result.codeResult.code;
+      if (!code) return;
+
+      // Filtro de confianza: al menos 2 barras decodificadas iguales
+      var decodedCodes = result.codeResult.decodedCodes || [];
+      var errors = decodedCodes
+        .filter(function(x){ return x.error !== undefined; })
+        .map(function(x){ return x.error; });
+      var avgErr = errors.length
+        ? errors.reduce(function(a,b){return a+b;},0) / errors.length
+        : 1;
+
+      if (avgErr > 0.25) return;  // demasiado ruido, ignorar
+
+      // Debounce: evitar múltiples disparos del mismo código
+      if (code === _lastCode) return;
+      clearTimeout(_debounce);
+      _debounce = setTimeout(function(){
+        _lastCode = null;
+      }, 3000);
+      _lastCode = code;
+
+      if (navigator.vibrate) navigator.vibrate(100);
+      _onCodeFound(code);
+    });
   }
 
-  /* ── ZXing continuous decode ───────────────────────── */
-  function _startZXing(video) {
+  /* ── Detener Quagga2 ───────────────────────────────── */
+  function _stopQuagga() {
+    if (!_running) return;
+    _running = false;
     try {
-      var hints = new Map();
-      var formats = [
-        ZXing.BarcodeFormat.EAN_13,
-        ZXing.BarcodeFormat.EAN_8,
-        ZXing.BarcodeFormat.UPC_A,
-        ZXing.BarcodeFormat.UPC_E,
-        ZXing.BarcodeFormat.CODE_128,
-        ZXing.BarcodeFormat.CODE_39,
-        ZXing.BarcodeFormat.ITF,
-      ];
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-
-      _reader = new ZXing.BrowserMultiFormatReader(hints, 300);
-
-      _reader.decodeFromVideoElement(video, function(result, err) {
-        if (result) {
-          var code = result.getText();
-          if (code && code !== _lastCode) {
-            _lastCode = code;
-            _onCodeFound(code);
-          }
-        }
-        // err es normal cuando no hay código en frame, ignorar
-      });
-    } catch(e) {
-      console.warn('[Scanner] ZXing init error:', e);
-      _setStatus('⚠️ Error iniciando escáner. Usa entrada manual.', 'notfound');
-    }
-  }
-
-  /* ── Detener cámara ────────────────────────────────── */
-  function _stopCamera() {
-    _scanning = false;
-    if (_reader) {
-      try { _reader.reset(); } catch(e){}
-      _reader = null;
-    }
-    if (_stream) {
-      _stream.getTracks().forEach(function(t){ t.stop(); });
-      _stream = null;
-    }
-    var video = document.getElementById('scanner-video');
-    if (video) { video.srcObject = null; }
+      Quagga.offDetected();
+      Quagga.stop();
+    } catch(e) { console.warn('[Scanner] stop error:', e); }
   }
 
   /* ── Código detectado ──────────────────────────────── */
   function _onCodeFound(code) {
-    // Vibrar si disponible (feedback táctil)
-    if (navigator.vibrate) navigator.vibrate(80);
-
     var product = _findByBarcode(code);
     if (product) {
       _setStatus('✅ ' + product.nombre, 'found');
+      _stopQuagga();
       setTimeout(function() {
         _applyToContext(code, product);
         scannerClose();
-      }, 600);
+      }, 500);
     } else {
-      _setStatus('⚠️ Código: ' + code + ' — no encontrado en inventario', 'notfound');
-      // Poner el código en el campo manual por si quiere buscar igual
+      _setStatus('Código ' + code + ' no está en inventario', 'notfound');
       document.getElementById('scanner-manual-input').value = code;
-      // Después de 2s continuar escaneando
+      // Continuar escaneando
       setTimeout(function() {
-        _lastCode = null;
-        if (_scanning) {
-          _setStatus('Apunta el código de barras al recuadro…', '');
+        if (_running) {
+          _lastCode = null;
+          _setStatus('Apunta el código al recuadro…', '');
         }
       }, 2500);
     }
   }
 
-  /* ── Buscar producto por barcode ───────────────────── */
+  /* ── Buscar en db ──────────────────────────────────── */
   function _findByBarcode(code) {
     if (typeof db === 'undefined' || !db.products) return null;
     var c = (code || '').trim();
     return db.products.find(function(p){
-      return p.barcode && p.barcode.trim() === c;
+      return p.barcode && p.barcode.toString().trim() === c;
     }) || null;
   }
 
-  /* ── Aplicar resultado al contexto ────────────────── */
+  /* ── Aplicar al contexto ───────────────────────────── */
   function _applyToContext(code, product) {
+    var nombre = product ? product.nombre : code;
     if (_context === 'pos') {
-      // Agregar al carrito si encontró producto
       if (product && typeof posAdd === 'function') {
         posAdd(product.id);
       } else {
-        // Poner código en campo de búsqueda POS
         var el = document.getElementById('pos-q');
-        if (el) { el.value = code; if(typeof posSearch==='function') posSearch(); }
+        if (el) { el.value = code; if (typeof posSearch==='function') posSearch(); }
       }
     } else if (_context === 'inv') {
       var el = document.getElementById('inv-q');
-      if (el) {
-        el.value = product ? product.nombre : code;
-        if (typeof invRender === 'function') invRender();
-      }
+      if (el) { el.value = nombre; if (typeof invRender==='function') invRender(); }
     } else if (_context === 'consulta') {
       var el = document.getElementById('cq-input');
-      if (el) {
-        el.value = product ? product.nombre : code;
-        if (typeof cqRender === 'function') cqRender();
-      }
+      if (el) { el.value = nombre; if (typeof cqRender==='function') cqRender(); }
     }
   }
 
@@ -3074,12 +3089,11 @@ renderLoginUsers();
         scannerClose();
       }, 500);
     } else {
-      // No en inventario: igual aplica el código al contexto como búsqueda
-      _setStatus('No encontrado — aplicando búsqueda…', 'notfound');
+      _setStatus('No encontrado — buscando…', 'notfound');
       setTimeout(function() {
         _applyToContext(code, null);
         scannerClose();
-      }, 700);
+      }, 600);
     }
   };
 
@@ -3091,14 +3105,15 @@ renderLoginUsers();
     el.className = cls || '';
   }
 
-  // Cerrar con Escape
+  // Escape cierra
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && document.getElementById('scanner-overlay').classList.contains('open')) {
-      scannerClose();
+    if (e.key === 'Escape') {
+      var ov = document.getElementById('scanner-overlay');
+      if (ov && ov.classList.contains('open')) scannerClose();
     }
   });
 
-  // Cerrar tocando el fondo oscuro
+  // Tap en fondo oscuro cierra
   document.getElementById('scanner-overlay').addEventListener('click', function(e) {
     if (e.target === this) scannerClose();
   });
