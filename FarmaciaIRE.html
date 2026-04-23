@@ -3009,24 +3009,20 @@ renderLoginUsers();
   function _onCodeConfirmed(code) {
     var product = _findByBarcode(code);
     if (product) {
+      // Producto encontrado: mostrar nombre brevemente y aplicar
       _setStatus('✅ ' + product.nombre, 'found');
       setTimeout(function(){
         _applyToContext(code, product);
         scannerClose();
-      }, 500);
+      }, 400);
     } else {
-      _setStatus('Código ' + code + ' no está en inventario', 'notfound');
-      document.getElementById('scanner-manual-input').value = code;
-      // Permitir reintentar
+      // No encontrado: cerrar modal, poner código en buscador y disparar búsqueda
+      // para que el usuario vea los resultados (ej. búsqueda parcial por número)
+      _setStatus('Buscando ' + code + '…', '');
       setTimeout(function(){
-        if (!_running && document.getElementById('scanner-overlay').classList.contains('open')) {
-          _votes     = {};
-          _confirmed = false;
-          document.getElementById('scanner-confirm-bar').style.display = 'none';
-          document.getElementById('scanner-confirm-fill').style.width  = '0%';
-          _startQuagga();
-        }
-      }, 2800);
+        _applyToContext(code, null);
+        scannerClose();
+      }, 250);
     }
   }
 
@@ -3053,20 +3049,38 @@ renderLoginUsers();
 
   /* ── Aplicar al contexto ───────────────────────────── */
   function _applyToContext(code, product) {
-    var nombre = product ? product.nombre : code;
+    var buscar = product ? product.nombre : code;
+
     if (_context === 'pos') {
       if (product && typeof posAdd === 'function') {
+        // Producto encontrado: agregar directo al carrito
         posAdd(product.id);
       } else {
+        // No encontrado: poner código en buscador y abrir autocomplete
         var el = document.getElementById('pos-q');
-        if (el){ el.value = code; if(typeof posSearch==='function') posSearch(); }
+        if (el) {
+          el.value = code;
+          // Disparar búsqueda y luego focus para abrir autocomplete
+          if (typeof posSearch === 'function') posSearch();
+          setTimeout(function(){ el.focus(); }, 50);
+        }
       }
     } else if (_context === 'inv') {
       var el = document.getElementById('inv-q');
-      if (el){ el.value = nombre; if(typeof invRender==='function') invRender(); }
+      if (el) {
+        el.value = buscar;
+        // invRender lee el valor del input directamente
+        if (typeof invRender === 'function') invRender();
+        el.focus();
+      }
     } else if (_context === 'consulta') {
       var el = document.getElementById('cq-input');
-      if (el){ el.value = nombre; if(typeof cqRender==='function') cqRender(); }
+      if (el) {
+        el.value = buscar;
+        // cqRender lee el valor del input directamente
+        if (typeof cqRender === 'function') cqRender();
+        el.focus();
+      }
     }
   }
 
