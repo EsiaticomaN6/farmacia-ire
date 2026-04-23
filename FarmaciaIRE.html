@@ -3197,7 +3197,8 @@ renderLoginUsers();
 
     } else if (_context === 'inv') {
       if (product) {
-        // Filtrar tabla para mostrar solo ese producto y resaltarlo
+        // Poner nombre en inv-q → invRender filtra y muestra solo ese producto
+        // Al borrar el campo manualmente invRender vuelve a mostrar todos (oninput ya lo hace)
         var el = document.getElementById('inv-q');
         if (el) { el.value = product.nombre; if(typeof invRender==='function') invRender(); }
         setTimeout(function(){ _highlightInvRow(product); }, 80);
