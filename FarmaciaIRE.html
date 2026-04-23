@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Farmacia IRE</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<!-- Quagga2: barcode reader compatible con Safari/iOS -->
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -351,94 +350,58 @@ tbody td{padding:10px 14px;vertical-align:middle}
   #topbar{height:44px}
 }
 
-/* ══ SCANNER MODAL ══════════════════════════════════════ */
-#scanner-overlay{
-  display:none;position:fixed;inset:0;background:rgba(10,12,30,.92);
+/* ══ SCANNER ════════════════════════════════════════════ */
+#scanner-overlay{display:none;position:fixed;inset:0;background:rgba(10,12,30,.93);
   z-index:5000;flex-direction:column;align-items:center;justify-content:center;
-  backdrop-filter:blur(4px);
-}
+  backdrop-filter:blur(4px);}
 #scanner-overlay.open{display:flex;}
-#scanner-box{
-  background:#1a1f3c;border-radius:18px;overflow:hidden;
-  width:min(94vw,440px);box-shadow:0 16px 60px rgba(0,0,0,.6);
-  display:flex;flex-direction:column;
-}
-#scanner-header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;
-}
+#scanner-box{background:#1a1f3c;border-radius:18px;overflow:hidden;
+  width:min(94vw,420px);box-shadow:0 16px 60px rgba(0,0,0,.6);display:flex;flex-direction:column;}
+#scanner-header{display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;}
 #scanner-header h3{color:#fff;font-size:15px;font-weight:700;margin:0;}
-#scanner-close-btn{
-  background:none;border:none;color:rgba(255,255,255,.5);font-size:24px;
-  cursor:pointer;line-height:1;padding:0 4px;
-}
+#scanner-close-btn{background:none;border:none;color:rgba(255,255,255,.5);font-size:24px;
+  cursor:pointer;line-height:1;padding:0 4px;}
 #scanner-close-btn:hover{color:#fff;}
-#scanner-video-wrap{
-  position:relative;background:#000;overflow:hidden;
-  width:100%;aspect-ratio:4/3;
-}
-#scanner-video-wrap video,
-#scanner-video-wrap canvas{
-  position:absolute;inset:0;width:100%!important;height:100%!important;
-  object-fit:cover;
-}
-/* Ocultar el canvas de dibujo de Quagga (overlay de detección) */
-#scanner-video-wrap canvas.drawingBuffer{opacity:0;}
-#scanner-aim{
-  position:absolute;inset:0;display:flex;align-items:center;
-  justify-content:center;pointer-events:none;z-index:2;
-}
-#scanner-aim-inner{
-  width:72%;max-width:280px;height:90px;position:relative;
-}
+#scanner-video-wrap{position:relative;background:#000;overflow:hidden;width:100%;aspect-ratio:4/3;}
+#scanner-video-wrap video,#scanner-video-wrap canvas{
+  position:absolute;inset:0;width:100%!important;height:100%!important;object-fit:cover;}
+#scanner-video-wrap canvas.drawingBuffer{display:none!important;}
+#scanner-aim{position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;pointer-events:none;z-index:2;}
+#scanner-aim-inner{width:78%;max-width:300px;height:100px;position:relative;}
 #scanner-aim-inner::before,#scanner-aim-inner::after,
 #scanner-aim-inner span::before,#scanner-aim-inner span::after{
-  content:'';position:absolute;width:22px;height:22px;
-  border-color:#3b5bdb;border-style:solid;
-}
+  content:'';position:absolute;width:24px;height:24px;border-color:#3b5bdb;border-style:solid;}
 #scanner-aim-inner::before{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
 #scanner-aim-inner::after{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
 #scanner-aim-inner span::before{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
 #scanner-aim-inner span::after{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
-#scanner-line{
-  position:absolute;left:5%;right:5%;height:2px;
+#scanner-line{position:absolute;left:4%;right:4%;height:2px;
   background:linear-gradient(90deg,transparent,#3b5bdb,transparent);
-  box-shadow:0 0 10px #3b5bdb,0 0 20px rgba(59,91,219,.4);
-  animation:scanner-sweep 1.8s ease-in-out infinite;
-}
-@keyframes scanner-sweep{0%,100%{top:10%;}50%{top:90%;}}
-#scanner-status{
-  padding:12px 18px;text-align:center;font-size:13px;min-height:46px;
+  box-shadow:0 0 10px #3b5bdb;animation:sc-sweep 1.8s ease-in-out infinite;}
+@keyframes sc-sweep{0%,100%{top:8%;}50%{top:92%;}}
+#scanner-confirm-bar{display:none;height:4px;background:#e2e6f0;flex-shrink:0;}
+#scanner-confirm-fill{height:100%;width:0%;background:#3b5bdb;transition:width .1s linear;}
+#scanner-status{padding:10px 18px;text-align:center;font-size:13px;min-height:42px;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  color:rgba(255,255,255,.6);transition:color .2s;
-}
+  color:rgba(255,255,255,.6);}
 #scanner-status.found{color:#2f9e44;font-weight:700;}
 #scanner-status.notfound{color:#e67700;font-weight:600;}
 #scanner-status.error{color:#e03131;font-weight:600;}
-#scanner-manual-row{
-  padding:0 18px 18px;display:flex;gap:8px;flex-shrink:0;
-}
-#scanner-manual-input{
-  flex:1;padding:9px 12px;border-radius:8px;
-  border:1.5px solid rgba(255,255,255,.15);
-  background:rgba(255,255,255,.07);color:#fff;
-  font-size:14px;font-family:inherit;
-}
+#scanner-manual-row{padding:0 18px 18px;display:flex;gap:8px;flex-shrink:0;}
+#scanner-manual-input{flex:1;padding:9px 12px;border-radius:8px;
+  border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);
+  color:#fff;font-size:14px;font-family:inherit;}
 #scanner-manual-input::placeholder{color:rgba(255,255,255,.3);}
 #scanner-manual-input:focus{outline:none;border-color:#3b5bdb;}
-#scanner-manual-btn{
-  background:#3b5bdb;color:#fff;border:none;padding:9px 18px;
-  border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;
-  white-space:nowrap;
-}
-.scan-cam-btn{
-  display:flex;align-items:center;justify-content:center;
-  width:36px;height:36px;border-radius:8px;
-  border:1.5px solid var(--border);background:var(--card);
-  cursor:pointer;font-size:18px;flex-shrink:0;transition:all .15s;
-}
+#scanner-manual-btn{background:#3b5bdb;color:#fff;border:none;padding:9px 18px;
+  border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px;}
+.scan-cam-btn{display:flex;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);
+  background:var(--card);cursor:pointer;font-size:18px;flex-shrink:0;transition:all .15s;}
 .scan-cam-btn:hover{background:var(--accent);border-color:var(--accent);}
-/* ══════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════ */
 
 </style>
 </head>
@@ -2880,6 +2843,7 @@ renderLoginUsers();
         <div id="scanner-line"></div>
       </div>
     </div>
+    <div id="scanner-confirm-bar"><div id="scanner-confirm-fill"></div></div>
     <div id="scanner-status">Iniciando cámara…</div>
     <div id="scanner-manual-row">
       <input id="scanner-manual-input" type="text" inputmode="numeric"
@@ -2894,91 +2858,88 @@ renderLoginUsers();
 
 <script>
 /* ════════════════════════════════════════════════════════
-   Farmacia IRE — Scanner con Quagga2
-   Compatible con Safari iOS/iPadOS
+   Farmacia IRE — Scanner Quagga2
+   Validación por votación: requiere VOTES_NEEDED lecturas
+   iguales consecutivas antes de confirmar el código.
+   Esto elimina falsos positivos en Safari/iOS.
    ════════════════════════════════════════════════════════ */
 (function(){
   'use strict';
 
-  var _context  = null;
-  var _running  = false;
-  var _lastCode = null;
-  var _debounce = null;
+  var VOTES_NEEDED = 4;     // lecturas iguales consecutivas requeridas
+  var MAX_ERR      = 0.12;  // error máximo por barra (muy estricto)
+
+  var _context   = null;
+  var _running   = false;
+  var _votes     = {};      // { código: count }
+  var _confirmed = false;
+  var _fillTimer = null;
 
   /* ── Abrir ─────────────────────────────────────────── */
-  window.scannerOpen = function(context) {
-    _context  = context;
-    _lastCode = null;
+  window.scannerOpen = function(ctx) {
+    _context   = ctx;
+    _votes     = {};
+    _confirmed = false;
+    clearInterval(_fillTimer);
     document.getElementById('scanner-overlay').classList.add('open');
-    _setStatus('Iniciando cámara…', '');
+    document.getElementById('scanner-confirm-bar').style.display = 'none';
+    document.getElementById('scanner-confirm-fill').style.width  = '0%';
     document.getElementById('scanner-manual-input').value = '';
+    _setStatus('Iniciando cámara…', '');
     _startQuagga();
   };
 
   /* ── Cerrar ────────────────────────────────────────── */
   window.scannerClose = function() {
     _stopQuagga();
+    clearInterval(_fillTimer);
     document.getElementById('scanner-overlay').classList.remove('open');
     _context = null;
   };
 
   /* ── Iniciar Quagga2 ───────────────────────────────── */
   function _startQuagga() {
-    if (_running) { _stopQuagga(); }
-
+    if (_running) _stopQuagga();
     if (typeof Quagga === 'undefined') {
-      _setStatus('⚠️ Librería no cargada. Usa entrada manual.', 'error');
+      _setStatus('⚠️ Librería no disponible. Usa entrada manual.', 'error');
       return;
     }
-
-    var wrap = document.getElementById('scanner-video-wrap');
 
     Quagga.init({
       inputStream: {
         name: 'Live',
         type: 'LiveStream',
-        target: wrap,
+        target: document.getElementById('scanner-video-wrap'),
         constraints: {
-          width:  { min: 640, ideal: 1280 },
-          height: { min: 480, ideal: 720 },
-          facingMode: 'environment',   // cámara trasera
+          width:       { min: 640, ideal: 1280 },
+          height:      { min: 480, ideal: 720 },
+          facingMode:  'environment',
           aspectRatio: { ideal: 4/3 },
         },
-        area: {           // zona de detección (centro 60%)
-          top:    '20%',
-          right:  '10%',
-          left:   '10%',
-          bottom: '20%',
-        },
+        area: { top:'15%', right:'5%', left:'5%', bottom:'15%' },
       },
-      locator: {
-        patchSize: 'medium',
-        halfSample: true,
-      },
-      numOfWorkers: 0,    // 0 = sin Web Workers (necesario en Safari)
-      frequency: 10,      // intentos por segundo
+      locator:  { patchSize:'medium', halfSample:true },
+      numOfWorkers: 0,        // requerido en Safari
+      frequency: 8,
       decoder: {
         readers: [
-          'ean_reader',           // EAN-13 (más común en farmacias MX)
+          'ean_reader',       // EAN-13 (México)
           'ean_8_reader',
-          'upc_reader',           // UPC-A
+          'upc_reader',       // UPC-A
           'upc_e_reader',
           'code_128_reader',
-          'code_39_reader',
         ],
         multiple: false,
       },
       locate: true,
     }, function(err) {
       if (err) {
-        console.error('[Scanner] Quagga init error:', err);
-        if (err.name === 'NotAllowedError' || (err.message && err.message.includes('Permission'))) {
-          _setStatus('⚠️ Permiso de cámara denegado. Usa entrada manual.', 'error');
-        } else if (err.name === 'NotFoundError') {
-          _setStatus('⚠️ No se encontró cámara. Usa entrada manual.', 'error');
-        } else {
-          _setStatus('⚠️ Error: ' + (err.message || err) + '. Usa entrada manual.', 'error');
-        }
+        var msg = err.name === 'NotAllowedError'
+          ? '⚠️ Permiso denegado. Actívalo en Ajustes > Safari.'
+          : err.name === 'NotFoundError'
+            ? '⚠️ No se encontró cámara. Usa entrada manual.'
+            : '⚠️ Error de cámara. Usa entrada manual.';
+        _setStatus(msg, 'error');
         return;
       }
       _running = true;
@@ -2986,70 +2947,84 @@ renderLoginUsers();
       _setStatus('Apunta el código al recuadro…', '');
     });
 
-    /* ── Callback de código detectado ─────────────────── */
-    Quagga.onDetected(function(result) {
-      if (!_running) return;
-      var code = result && result.codeResult && result.codeResult.code;
-      if (!code) return;
-
-      // Filtro de confianza: al menos 2 barras decodificadas iguales
-      var decodedCodes = result.codeResult.decodedCodes || [];
-      var errors = decodedCodes
-        .filter(function(x){ return x.error !== undefined; })
-        .map(function(x){ return x.error; });
-      var avgErr = errors.length
-        ? errors.reduce(function(a,b){return a+b;},0) / errors.length
-        : 1;
-
-      if (avgErr > 0.25) return;  // demasiado ruido, ignorar
-
-      // Debounce: evitar múltiples disparos del mismo código
-      if (code === _lastCode) return;
-      clearTimeout(_debounce);
-      _debounce = setTimeout(function(){
-        _lastCode = null;
-      }, 3000);
-      _lastCode = code;
-
-      if (navigator.vibrate) navigator.vibrate(100);
-      _onCodeFound(code);
-    });
+    Quagga.onDetected(_onRawDetected);
   }
 
-  /* ── Detener Quagga2 ───────────────────────────────── */
+  /* ── Detener ───────────────────────────────────────── */
   function _stopQuagga() {
     if (!_running) return;
     _running = false;
-    try {
-      Quagga.offDetected();
-      Quagga.stop();
-    } catch(e) { console.warn('[Scanner] stop error:', e); }
+    try { Quagga.offDetected(_onRawDetected); Quagga.stop(); } catch(e){}
   }
 
-  /* ── Código detectado ──────────────────────────────── */
-  function _onCodeFound(code) {
+  /* ── Cada detección raw ────────────────────────────── */
+  function _onRawDetected(result) {
+    if (!_running || _confirmed) return;
+
+    var code = result && result.codeResult && result.codeResult.code;
+    if (!code || code.length < 6) return;
+
+    // ── Filtro de calidad por barra ──
+    var decoded = (result.codeResult.decodedCodes || [])
+      .filter(function(d){ return d.error !== undefined; });
+    if (decoded.length === 0) return;
+
+    var maxErr = Math.max.apply(null, decoded.map(function(d){ return d.error; }));
+    var avgErr = decoded.reduce(function(s,d){ return s+d.error; },0) / decoded.length;
+
+    // Rechazar si cualquier barra tiene error alto O el promedio es alto
+    if (maxErr > 0.4 || avgErr > MAX_ERR) return;
+
+    // ── Sistema de votación ──
+    // Resetear votos de otros códigos
+    Object.keys(_votes).forEach(function(k){
+      if (k !== code) _votes[k] = 0;
+    });
+    _votes[code] = (_votes[code] || 0) + 1;
+
+    var pct = Math.min(100, Math.round(_votes[code] / VOTES_NEEDED * 100));
+
+    // Mostrar barra de progreso
+    var bar = document.getElementById('scanner-confirm-bar');
+    var fill = document.getElementById('scanner-confirm-fill');
+    bar.style.display = 'block';
+    fill.style.width  = pct + '%';
+    _setStatus('Verificando… (' + _votes[code] + '/' + VOTES_NEEDED + ')', '');
+
+    if (_votes[code] >= VOTES_NEEDED) {
+      _confirmed = true;
+      _stopQuagga();
+      if (navigator.vibrate) navigator.vibrate([60,30,60]);
+      _onCodeConfirmed(code);
+    }
+  }
+
+  /* ── Código confirmado ─────────────────────────────── */
+  function _onCodeConfirmed(code) {
     var product = _findByBarcode(code);
     if (product) {
       _setStatus('✅ ' + product.nombre, 'found');
-      _stopQuagga();
-      setTimeout(function() {
+      setTimeout(function(){
         _applyToContext(code, product);
         scannerClose();
       }, 500);
     } else {
       _setStatus('Código ' + code + ' no está en inventario', 'notfound');
       document.getElementById('scanner-manual-input').value = code;
-      // Continuar escaneando
-      setTimeout(function() {
-        if (_running) {
-          _lastCode = null;
-          _setStatus('Apunta el código al recuadro…', '');
+      // Permitir reintentar
+      setTimeout(function(){
+        if (!_running && document.getElementById('scanner-overlay').classList.contains('open')) {
+          _votes     = {};
+          _confirmed = false;
+          document.getElementById('scanner-confirm-bar').style.display = 'none';
+          document.getElementById('scanner-confirm-fill').style.width  = '0%';
+          _startQuagga();
         }
-      }, 2500);
+      }, 2800);
     }
   }
 
-  /* ── Buscar en db ──────────────────────────────────── */
+  /* ── Buscar por barcode ────────────────────────────── */
   function _findByBarcode(code) {
     if (typeof db === 'undefined' || !db.products) return null;
     var c = (code || '').trim();
@@ -3066,14 +3041,14 @@ renderLoginUsers();
         posAdd(product.id);
       } else {
         var el = document.getElementById('pos-q');
-        if (el) { el.value = code; if (typeof posSearch==='function') posSearch(); }
+        if (el){ el.value = code; if(typeof posSearch==='function') posSearch(); }
       }
     } else if (_context === 'inv') {
       var el = document.getElementById('inv-q');
-      if (el) { el.value = nombre; if (typeof invRender==='function') invRender(); }
+      if (el){ el.value = nombre; if(typeof invRender==='function') invRender(); }
     } else if (_context === 'consulta') {
       var el = document.getElementById('cq-input');
-      if (el) { el.value = nombre; if (typeof cqRender==='function') cqRender(); }
+      if (el){ el.value = nombre; if(typeof cqRender==='function') cqRender(); }
     }
   }
 
@@ -3084,16 +3059,10 @@ renderLoginUsers();
     var product = _findByBarcode(code);
     if (product) {
       _setStatus('✅ ' + product.nombre, 'found');
-      setTimeout(function() {
-        _applyToContext(code, product);
-        scannerClose();
-      }, 500);
+      setTimeout(function(){ _applyToContext(code, product); scannerClose(); }, 500);
     } else {
       _setStatus('No encontrado — buscando…', 'notfound');
-      setTimeout(function() {
-        _applyToContext(code, null);
-        scannerClose();
-      }, 600);
+      setTimeout(function(){ _applyToContext(code, null); scannerClose(); }, 600);
     }
   };
 
@@ -3102,19 +3071,17 @@ renderLoginUsers();
     var el = document.getElementById('scanner-status');
     if (!el) return;
     el.textContent = msg;
-    el.className = cls || '';
+    el.className   = cls || '';
   }
 
-  // Escape cierra
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
+  document.addEventListener('keydown', function(e){
+    if (e.key==='Escape'){
       var ov = document.getElementById('scanner-overlay');
       if (ov && ov.classList.contains('open')) scannerClose();
     }
   });
 
-  // Tap en fondo oscuro cierra
-  document.getElementById('scanner-overlay').addEventListener('click', function(e) {
+  document.getElementById('scanner-overlay').addEventListener('click', function(e){
     if (e.target === this) scannerClose();
   });
 
