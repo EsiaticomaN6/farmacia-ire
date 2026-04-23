@@ -589,7 +589,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <!-- ══ INVENTARIO ══ -->
     <div id="page-inv" class="page">
       <div class="inv-bar">
-        <input id="inv-q" type="text" placeholder="🔍  Buscar producto…" oninput="invRender()" style="width:180px">
+        <input id="inv-q" type="text" placeholder="🔍  Buscar producto…" oninput="window._scLastScan=null;invRender()" style="width:180px">
         <button class="sc-btn" onclick="scOpen('inv')" title="Escanear">📷</button>
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('inv-q').value='';invRender()">✕ Limpiar</button>
         <select id="inv-dept" onchange="invRender()"><option value="">Todos los deptos.</option></select>
