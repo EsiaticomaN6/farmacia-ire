@@ -3,6 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- PWA / Pantalla de inicio -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00a86b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Farmacia IRE">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192x192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512x512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192x192.png">
 <title>Farmacia IRE</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
@@ -591,7 +602,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
       <div class="inv-bar">
         <input id="inv-q" type="text" placeholder="🔍  Buscar producto…" oninput="window._scLastScan=null;invRender()" style="width:180px">
         <button class="sc-btn" onclick="scOpen('inv')" title="Escanear">📷</button>
-        <button class="btn btn-outline btn-sm" onclick="document.getElementById('inv-q').value='';invRender()">✕ Limpiar</button>
+        <button class="btn btn-outline btn-sm" onclick="window._scLastScan=null;document.getElementById('inv-q').value='';invRender()">✕ Limpiar</button>
         <select id="inv-dept" onchange="invRender()"><option value="">Todos los deptos.</option></select>
         <select id="inv-stock-f" onchange="invRender()">
           <option value="">Todo el stock</option>
