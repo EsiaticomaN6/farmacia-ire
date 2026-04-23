@@ -3189,8 +3189,20 @@ renderLoginUsers();
       }
     } else if (_context === 'inv') {
       var el = document.getElementById('inv-q');
-      if (el){ el.value = buscar; if(typeof invRender==='function') invRender(); el.focus(); }
-      setTimeout(function(){ _highlightInvRow(product); }, 80);
+      if (product) {
+        // Encontrado: filtrar brevemente para ubicar la fila, luego limpiar
+        if (el) { el.value = buscar; if(typeof invRender==='function') invRender(); }
+        setTimeout(function(){ _highlightInvRow(product); }, 80);
+        // Limpiar campo después de 800ms para mostrar toda la tabla con el resaltado visible
+        setTimeout(function(){
+          if (el) { el.value = ''; if(typeof invRender==='function') invRender(); }
+          // Re-aplicar highlight porque invRender reconstruye el DOM
+          setTimeout(function(){ _highlightInvRow(product); }, 60);
+        }, 800);
+      } else {
+        // No encontrado: NO filtrar la tabla, solo mostrar toast rojo
+        _highlightInvRow(null);
+      }
     } else if (_context === 'consulta') {
       var el = document.getElementById('cq-input');
       if (el){ el.value = buscar; if(typeof cqRender==='function') cqRender(); el.focus(); }
