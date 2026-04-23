@@ -3155,27 +3155,30 @@ renderLoginUsers();
      ════════════════════════════════════════════════════ */
   function _onConfirmed(code) {
     var product = _findByBarcode(code);
-    if (product) {
-      _setStatus('✅ ' + product.nombre, 'found');
-      setTimeout(function(){
-        _applyToContext(code, product);
-        scannerClose();
-      }, 400);
-    } else {
-      _setStatus('Buscando ' + code + '…', '');
-      setTimeout(function(){
-        _applyToContext(code, null);
-        scannerClose();
-      }, 250);
-    }
+    // Cerrar modal primero, luego aplicar resultado
+    scannerClose();
+    setTimeout(function(){
+      _applyToContext(code, product);
+    }, 150);
   }
 
   function _findByBarcode(code) {
     if (typeof DB === 'undefined' || !DB.products) return null;
-    var c = (code || '').trim();
-    return DB.products.find(function(p){
-      return p.barcode && p.barcode.toString().trim() === c;
+    var c = (code || '').trim().replace(/^0+/, ''); // quitar ceros iniciales
+    var result = DB.products.find(function(p){
+      if (!p.barcode) return false;
+      var b = p.barcode.toString().trim().replace(/^0+/, '');
+      return b === c;
     }) || null;
+    console.log('[Scanner] Buscando:', code, '→ normalizado:', c, '→', result ? result.nombre : 'NO ENCONTRADO');
+    console.log('[Scanner] Total productos en DB:', DB.products.length);
+    if (!result && DB.products.length > 0) {
+      // Mostrar primeros 3 barcodes para comparar
+      DB.products.slice(0,3).forEach(function(p){
+        console.log('[Scanner] Ejemplo barcode en DB:', JSON.stringify(p.barcode));
+      });
+    }
+    return result;
   }
 
   function _applyToContext(code, product) {
