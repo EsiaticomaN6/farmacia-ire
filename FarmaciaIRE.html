@@ -600,6 +600,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <!-- ══ INVENTARIO ══ -->
     <div id="page-inv" class="page">
       <div class="inv-bar">
+        <span id="inv-total" style="font-size:13px;color:var(--text2);white-space:nowrap;font-weight:600"></span>
         <input id="inv-q" type="text" placeholder="🔍  Buscar producto…" oninput="window._scLastScan=null;invRender()" style="width:180px">
         <button class="sc-btn" onclick="scOpen('inv')" title="Escanear">📷</button>
         <button class="btn btn-outline btn-sm" onclick="window._scLastScan=null;document.getElementById('inv-q').value='';invRender()">✕ Limpiar</button>
@@ -1728,6 +1729,18 @@ function invRender(){
       setTimeout(function(){toast.style.opacity='1';},20);
       setTimeout(function(){toast.style.opacity='0';setTimeout(function(){toast.remove();},220);},3000);
     },100);
+  }
+  var _total = DB.products ? DB.products.length : 0;
+  var _elT = document.getElementById('inv-total');
+  if(_elT){
+    var _q=document.getElementById('inv-q').value.trim();
+    var _d=document.getElementById('inv-dept').value;
+    var _s=document.getElementById('inv-stock-f').value;
+    if(_q||_d||_s){
+      _elT.textContent=prods.length+' de '+_total+' producto'+(   _total!==1?'s':'');
+    } else {
+      _elT.textContent=_total+' producto'+(_total!==1?'s':'') + ' en total';
+    }
   }
   tbody.innerHTML=prods.map(p=>{
     const minS=p.minStock||ms2;
