@@ -600,7 +600,6 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <!-- ══ INVENTARIO ══ -->
     <div id="page-inv" class="page">
       <div class="inv-bar">
-        <span id="inv-total" style="font-size:13px;color:var(--text2);white-space:nowrap;font-weight:600"></span>
         <input id="inv-q" type="text" placeholder="🔍  Buscar producto…" oninput="window._scLastScan=null;invRender()" style="width:180px">
         <button class="sc-btn" onclick="scOpen('inv')" title="Escanear">📷</button>
         <button class="btn btn-outline btn-sm" onclick="window._scLastScan=null;document.getElementById('inv-q').value='';invRender()">✕ Limpiar</button>
@@ -617,6 +616,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
         <button class="btn btn-sm" style="background:#fff0f0;color:var(--red);border:1.5px solid #fecaca;font-weight:700" onclick="exportInvFiltrado('out')" title="Exportar solo productos sin stock">🚫 Sin stock</button>
         <button class="btn btn-outline" onclick="openImportModal()" title="Importar inventario desde Excel">📥 Importar Excel</button>
         <button class="btn btn-primary" onclick="openProdModal()">+ Producto</button>
+        <span id="inv-total" style="font-size:13px;color:var(--text2);font-weight:600;white-space:nowrap"></span>
       </div>
       <div id="inv-wrap" class="tbl-scroll">
         <table>
