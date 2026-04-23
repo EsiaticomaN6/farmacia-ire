@@ -762,7 +762,12 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <input type="hidden" id="p-id">
     <div class="form-row">
       <div class="form-group"><label>Código interno</label><input id="p-codigo" placeholder="AUTO (opcional)"></div>
-      <div class="form-group"><label>Código de barras</label><input id="p-barcode" placeholder="7501234567890"></div>
+      <div class="form-group"><label>Código de barras</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="p-barcode" placeholder="7501234567890" style="flex:1">
+          <button type="button" class="sc-btn" onclick="scOpen('barcode')" title="Escanear código">📷</button>
+        </div>
+      </div>
     </div>
     <div class="form-group"><label>Nombre del producto *</label><input id="p-nombre" placeholder="Paracetamol 500mg 24 tabs"></div>
     <div class="form-row">
@@ -1624,7 +1629,22 @@ function invRender(){
     const msok=!sf||(sf==='low'&&p.stock>0&&p.stock<=minS)||(sf==='out'&&p.stock===0);
     return mq&&md&&msok;
   });
-  if(!prods.length){tbody.innerHTML=`<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text3)">Sin productos</td></tr>`;return;}
+  if(!prods.length){
+    const q=document.getElementById('inv-q').value.trim();
+    if(q){
+      tbody.innerHTML=`<tr><td colspan="13" style="text-align:center;padding:40px;color:var(--text3)">
+        <div style="font-size:28px;margin-bottom:10px">🔍</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text2);margin-bottom:6px">Producto no encontrado</div>
+        <div style="font-size:13px;margin-bottom:16px">No existe ningún producto con "<b>${q}</b>" en el inventario</div>
+        <button class="btn btn-primary btn-sm" onclick="openProdModal();setTimeout(()=>{const b=document.getElementById('p-barcode');if(b&&/^[0-9]+$/.test('${q}'))b.value='${q}';},100)">
+          + Agregar como nuevo producto
+        </button>
+      </td></tr>`;
+    } else {
+      tbody.innerHTML=`<tr><td colspan="13" style="text-align:center;padding:30px;color:var(--text3)">Sin productos</td></tr>`;
+    }
+    return;
+  }
   const ms2=DB.config.minStock;
   tbody.innerHTML=prods.map(p=>{
     const minS=p.minStock||ms2;
@@ -3021,8 +3041,14 @@ function _apply(code) {
     var el = document.getElementById('cq-input');
     if (!el) return;
     el.value = code;
-    // cqRender filtra por barcode internamente
     if (typeof cqRender === 'function') cqRender();
+    el.focus();
+
+  } else if (_ctx === 'barcode') {
+    // Campo de barcode en formulario de nuevo producto
+    var el = document.getElementById('p-barcode');
+    if (!el) return;
+    el.value = code;
     el.focus();
   }
 }
