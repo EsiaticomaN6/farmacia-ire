@@ -1642,7 +1642,7 @@ function invRender(){
     if(p.stock===0) badge=`<span class="badge br">Sin stock</span>`;
     else if(p.stock<=minS) badge=`<span class="badge bo">Stock bajo</span>`;
     const vStr=p.vence?`<span style="color:${isExpired(p.vence)?'var(--red)':expiringSoon(p.vence)?'var(--orange)':'inherit'}">${p.vence}</span>`:'—';
-    return `<tr>
+    return `<tr data-pid="${p.id}">
       <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.barcode||p.codigo||'—'}</span></td>
       <td style="font-weight:700">${p.nombre}</td>
       <td style="font-size:11px;color:var(--text2);font-style:italic;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.desc||'—'}</td>
@@ -3180,32 +3180,42 @@ renderLoginUsers();
 
   function _applyToContext(code, product) {
     var buscar = product ? product.nombre : code;
+
     if (_context === 'pos') {
-      if (product && typeof posAdd === 'function') {
-        posAdd(product.id);
-      } else {
-        var el = document.getElementById('pos-q');
-        if (el){ el.value = code; if(typeof posSearch==='function') posSearch(); setTimeout(function(){el.focus();},50); }
-      }
-    } else if (_context === 'inv') {
-      var el = document.getElementById('inv-q');
       if (product) {
-        // Encontrado: filtrar brevemente para ubicar la fila, luego limpiar
-        if (el) { el.value = buscar; if(typeof invRender==='function') invRender(); }
-        setTimeout(function(){ _highlightInvRow(product); }, 80);
-        // Limpiar campo después de 800ms para mostrar toda la tabla con el resaltado visible
-        setTimeout(function(){
-          if (el) { el.value = ''; if(typeof invRender==='function') invRender(); }
-          // Re-aplicar highlight porque invRender reconstruye el DOM
-          setTimeout(function(){ _highlightInvRow(product); }, 60);
-        }, 800);
+        // Mostrar el producto resaltado en el grid antes de agregar
+        var el = document.getElementById('pos-q');
+        if (el) { el.value = product.nombre; if(typeof posSearch==='function') posSearch(); }
+        _scanToast('✅ ' + product.nombre + ' — agregado al carrito', '#2f9e44');
+        setTimeout(function(){ if(typeof posAdd==='function') posAdd(product.id); }, 400);
       } else {
-        // No encontrado: NO filtrar la tabla, solo mostrar toast rojo
-        _highlightInvRow(null);
+        // No encontrado: buscar por código para que el usuario vea
+        var el = document.getElementById('pos-q');
+        if (el){ el.value = code; if(typeof posSearch==='function') posSearch(); }
+        _scanToast('❌ Código ' + code + ' no encontrado', '#c92a2a');
       }
+
+    } else if (_context === 'inv') {
+      if (product) {
+        // Filtrar tabla para mostrar solo ese producto y resaltarlo
+        var el = document.getElementById('inv-q');
+        if (el) { el.value = product.nombre; if(typeof invRender==='function') invRender(); }
+        setTimeout(function(){ _highlightInvRow(product); }, 80);
+        _scanToast('✅ ' + product.nombre, '#2f9e44');
+      } else {
+        _scanToast('❌ Código ' + code + ' no encontrado en inventario', '#c92a2a');
+      }
+
     } else if (_context === 'consulta') {
-      var el = document.getElementById('cq-input');
-      if (el){ el.value = buscar; if(typeof cqRender==='function') cqRender(); el.focus(); }
+      if (product) {
+        var el = document.getElementById('cq-input');
+        if (el) { el.value = product.nombre; if(typeof cqRender==='function') cqRender(); }
+        _scanToast('✅ ' + product.nombre, '#2f9e44');
+      } else {
+        var el = document.getElementById('cq-input');
+        if (el) { el.value = code; if(typeof cqRender==='function') cqRender(); }
+        _scanToast('❌ Código ' + code + ' no encontrado', '#c92a2a');
+      }
     }
   }
 
@@ -3214,33 +3224,26 @@ renderLoginUsers();
     document.querySelectorAll('#inv-tbody tr[data-scan-hl]').forEach(function(r){
       r.style.background = ''; r.style.boxShadow = ''; r.removeAttribute('data-scan-hl');
     });
+    if (!product) return;
 
-    if (!product) {
-      // Rojo: mostrar toast de no encontrado
-      _scanToast('❌ Producto no encontrado en inventario', '#c92a2a');
-      return;
-    }
+    // Buscar fila por data-pid
+    var row = document.querySelector('#inv-tbody tr[data-pid="' + product.id + '"]');
+    if (!row) return;
 
-    // Verde: encontrar fila por nombre y resaltarla
-    var rows = document.querySelectorAll('#inv-tbody tr');
-    rows.forEach(function(row) {
-      var nameCell = row.cells && row.cells[1];
-      if (nameCell && nameCell.textContent.trim() === product.nombre) {
-        row.setAttribute('data-scan-hl', '1');
-        row.style.background  = 'rgba(47,158,68,.15)';
-        row.style.boxShadow   = 'inset 3px 0 0 #2f9e44';
-        row.style.transition  = 'background .3s';
-        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    });
-    _scanToast('✅ ' + product.nombre, '#2f9e44');
+    row.setAttribute('data-scan-hl', '1');
+    row.style.background = 'rgba(47,158,68,.15)';
+    row.style.boxShadow  = 'inset 3px 0 0 #2f9e44';
+    row.style.transition = 'background .3s';
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // Quitar resaltado después de 4s
+    // Quitar resaltado después de 5s
     setTimeout(function(){
-      document.querySelectorAll('#inv-tbody tr[data-scan-hl]').forEach(function(r){
-        r.style.background = ''; r.style.boxShadow = ''; r.removeAttribute('data-scan-hl');
-      });
-    }, 4000);
+      if (row) {
+        row.style.background = '';
+        row.style.boxShadow  = '';
+        row.removeAttribute('data-scan-hl');
+      }
+    }, 5000);
   }
 
   function _scanToast(msg, bg) {
