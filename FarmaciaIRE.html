@@ -2866,8 +2866,8 @@ renderLoginUsers();
 (function(){
   'use strict';
 
-  var VOTES_NEEDED = 4;     // lecturas iguales consecutivas requeridas
-  var MAX_ERR      = 0.12;  // error máximo por barra (muy estricto)
+  var VOTES_NEEDED = 3;     // lecturas iguales consecutivas requeridas
+  var MAX_ERR      = 0.18;  // error máximo promedio por barra
 
   var _context   = null;
   var _running   = false;
@@ -2918,16 +2918,13 @@ renderLoginUsers();
         },
         area: { top:'15%', right:'5%', left:'5%', bottom:'15%' },
       },
-      locator:  { patchSize:'medium', halfSample:true },
+      locator:  { patchSize:'large', halfSample:false },
       numOfWorkers: 0,        // requerido en Safari
-      frequency: 8,
+      frequency: 5,
       decoder: {
         readers: [
-          'ean_reader',       // EAN-13 (México)
-          'ean_8_reader',
-          'upc_reader',       // UPC-A
-          'upc_e_reader',
-          'code_128_reader',
+          'ean_reader',       // EAN-13 (750xxxxxxxx — México)
+          'code_128_reader',  // Códigos internos de farmacia
         ],
         multiple: false,
       },
@@ -2972,8 +2969,17 @@ renderLoginUsers();
     var maxErr = Math.max.apply(null, decoded.map(function(d){ return d.error; }));
     var avgErr = decoded.reduce(function(s,d){ return s+d.error; },0) / decoded.length;
 
-    // Rechazar si cualquier barra tiene error alto O el promedio es alto
-    if (maxErr > 0.4 || avgErr > MAX_ERR) return;
+    // Rechazar si el promedio de error es alto
+    if (maxErr > 0.5 || avgErr > MAX_ERR) return;
+
+    // ── Validación específica EAN-13 ──────────────────────
+    var fmt = result.codeResult.format;
+    if (fmt === 'ean_13' || fmt === 'EAN_13') {
+      // Debe tener exactamente 13 dígitos
+      if (!/^\d{13}$/.test(code)) return;
+      // Validar dígito verificador EAN-13
+      if (!_validEAN13(code)) return;
+    }
 
     // ── Sistema de votación ──
     // Resetear votos de otros códigos
@@ -3022,6 +3028,18 @@ renderLoginUsers();
         }
       }, 2800);
     }
+  }
+
+  /* ── Validar dígito verificador EAN-13 ─────────────── */
+  function _validEAN13(code) {
+    // Algoritmo oficial EAN-13
+    var sum = 0;
+    for (var i = 0; i < 12; i++) {
+      var d = parseInt(code[i], 10);
+      sum += (i % 2 === 0) ? d : d * 3;
+    }
+    var check = (10 - (sum % 10)) % 10;
+    return check === parseInt(code[12], 10);
   }
 
   /* ── Buscar por barcode ────────────────────────────── */
