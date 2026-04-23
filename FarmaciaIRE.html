@@ -480,16 +480,11 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <div id="page-pos" class="page active">
       <div id="pos-catalog">
         <div class="catalog-toolbar">
-          <div class="ac-wrap" style="display:flex;align-items:center;position:relative">
-            <input id="pos-q" type="text" placeholder="🔍  Buscar por nombre o código de barras…" oninput="posSearch()" onkeydown="posKey(event)" onfocus="posRestoreGrid()" autocomplete="off" style="padding-right:44px">
-            <button onclick="scannerOpen('pos')" title="Escanear código" style="
-              position:absolute;right:6px;top:50%;transform:translateY(-50%);
-              background:none;border:none;cursor:pointer;font-size:20px;
-              padding:2px 4px;line-height:1;border-radius:6px;
-              color:var(--text2);transition:color .15s;
-            " onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text2)'">📷</button>
+          <div class="ac-wrap">
+            <input id="pos-q" type="text" placeholder="🔍  Buscar por nombre o código de barras…" oninput="posSearch()" onkeydown="posKey(event)" onfocus="posRestoreGrid()" autocomplete="off">
             <div class="ac-drop" id="pos-ac"></div>
           </div>
+          <button class="scan-cam-btn" onclick="scannerOpen('pos')" title="Escanear">📷</button>
           <select id="pos-dept" onchange="posRenderGrid()">
             <option value="">Todos los deptos.</option>
           </select>
@@ -717,7 +712,6 @@ tbody td{padding:10px 14px;vertical-align:middle}
           <button class="btn btn-outline" onclick="exportBackup()">💾 Exportar respaldo</button>
           <label class="btn btn-outline" style="cursor:pointer">📂 Importar respaldo<input type="file" accept=".json" style="display:none" onchange="importBackup(event)"></label>
           <button class="btn btn-danger" onclick="resetAll()">🗑️ Borrar todo</button>
-          <button class="btn btn-outline" style="color:var(--orange);border-color:var(--orange)" onclick="borrarInventario()">📦 Borrar inventario</button>
         </div>
       </div>
     </div>
@@ -778,17 +772,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <input type="hidden" id="p-id">
     <div class="form-row">
       <div class="form-group"><label>Código interno</label><input id="p-codigo" placeholder="AUTO (opcional)"></div>
-      <div class="form-group"><label>Código de barras</label>
-        <div style="display:flex;gap:6px;align-items:center">
-          <input id="p-barcode" placeholder="7501234567890" style="flex:1">
-          <button type="button" onclick="scannerOpen('inv-form')" title="Escanear código" style="
-            background:var(--card);border:1.5px solid var(--border);border-radius:8px;
-            width:36px;height:36px;cursor:pointer;font-size:18px;
-            display:flex;align-items:center;justify-content:center;flex-shrink:0;
-            transition:all .15s;
-          " onmouseover="this.style.background='var(--accent)'" onmouseout="this.style.background='var(--card)'">📷</button>
-        </div>
-      </div>
+      <div class="form-group"><label>Código de barras</label><input id="p-barcode" placeholder="7501234567890"></div>
     </div>
     <div class="form-group"><label>Nombre del producto *</label><input id="p-nombre" placeholder="Paracetamol 500mg 24 tabs"></div>
     <div class="form-row">
@@ -2119,14 +2103,6 @@ function importBackup(e){
   };
   r.readAsText(f);e.target.value='';
 }
-function borrarInventario(){
-  if(!confirm('¿Borrar todo el inventario? Las ventas y configuración no se verán afectadas.')) return;
-  DB.products=[];
-  dbSave();
-  invRender();
-  posRenderGrid && posRenderGrid();
-  alert('Inventario borrado. Ahora puedes importar uno nuevo desde Inventario → Importar Excel.');
-}
 function resetAll(){
   if(!confirm('⚠️ ¿Borrar TODOS los datos? Esta acción no se puede deshacer.'))return;
   localStorage.clear();location.reload();
@@ -3204,133 +3180,76 @@ renderLoginUsers();
 
   function _applyToContext(code, product) {
     var buscar = product ? product.nombre : code;
-
     if (_context === 'pos') {
       if (product && typeof posAdd === 'function') {
-        // Producto encontrado: agregar al carrito y limpiar campo
         posAdd(product.id);
-        var el = document.getElementById('pos-q');
-        if (el) { el.value = ''; if(typeof posSearch==='function') posSearch(); }
       } else {
-        // No encontrado: buscar por código y limpiar tras breve delay
         var el = document.getElementById('pos-q');
-        if (el) {
-          el.value = code;
-          if(typeof posSearch==='function') posSearch();
-          setTimeout(function(){ el.focus(); }, 50);
-          setTimeout(function(){ el.value = ''; if(typeof posSearch==='function') posSearch(); }, 2500);
-        }
+        if (el){ el.value = code; if(typeof posSearch==='function') posSearch(); setTimeout(function(){el.focus();},50); }
       }
-
     } else if (_context === 'inv') {
       var el = document.getElementById('inv-q');
-      if (el) {
-        el.value = buscar;
-        if(typeof invRender==='function') invRender();
-        // Resaltar fila encontrada
-        setTimeout(function(){ _highlightInvRow(product, !!product); }, 80);
-        // Limpiar campo después de 3s
-        setTimeout(function(){
-          el.value = '';
-          if(typeof invRender==='function') invRender();
-          _clearInvHighlight();
-        }, 3000);
-      }
-
-    } else if (_context === 'inv-form') {
-      var el = document.getElementById('p-barcode');
-      if (el){ el.value = code; el.focus(); }
-
+      if (el){ el.value = buscar; if(typeof invRender==='function') invRender(); el.focus(); }
+      setTimeout(function(){ _highlightInvRow(product); }, 80);
     } else if (_context === 'consulta') {
       var el = document.getElementById('cq-input');
-      if (el) {
-        el.value = buscar;
-        if(typeof cqRender==='function') cqRender();
-        // Limpiar después de 3s
-        setTimeout(function(){
-          el.value = '';
-          if(typeof cqRender==='function') cqRender();
-        }, 3000);
-      }
+      if (el){ el.value = buscar; if(typeof cqRender==='function') cqRender(); el.focus(); }
     }
   }
 
-  /* ── Resaltar fila en tabla de inventario ──────────── */
-  function _highlightInvRow(product, found) {
-    _clearInvHighlight();
+  function _highlightInvRow(product) {
+    // Limpiar highlights previos
+    document.querySelectorAll('#inv-tbody tr[data-scan-hl]').forEach(function(r){
+      r.style.background = ''; r.style.boxShadow = ''; r.removeAttribute('data-scan-hl');
+    });
+
     if (!product) {
-      // No encontrado: resaltar toda la tabla con borde rojo
-      var tbody = document.getElementById('inv-tbody');
-      if (tbody) {
-        tbody.style.outline = '2px solid var(--red)';
-        tbody.style.borderRadius = '8px';
-      }
-      // Mostrar toast rojo
-      _showScanToast('❌ Producto no encontrado en inventario', '#e03131');
+      // Rojo: mostrar toast de no encontrado
+      _scanToast('❌ Producto no encontrado en inventario', '#c92a2a');
       return;
     }
-    // Encontrado: buscar la fila por barcode o nombre y resaltarla verde
+
+    // Verde: encontrar fila por nombre y resaltarla
     var rows = document.querySelectorAll('#inv-tbody tr');
     rows.forEach(function(row) {
-      var cell = row.cells && row.cells[1]; // columna nombre
-      if (cell && cell.textContent.trim() === product.nombre) {
-        row.style.background = 'rgba(47,158,68,.18)';
-        row.style.outline    = '2px solid #2f9e44';
-        row.style.transition = 'all .3s';
-        row.setAttribute('data-scan-highlight', '1');
-        // Scroll a la fila
+      var nameCell = row.cells && row.cells[1];
+      if (nameCell && nameCell.textContent.trim() === product.nombre) {
+        row.setAttribute('data-scan-hl', '1');
+        row.style.background  = 'rgba(47,158,68,.15)';
+        row.style.boxShadow   = 'inset 3px 0 0 #2f9e44';
+        row.style.transition  = 'background .3s';
         row.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
-    _showScanToast('✅ ' + product.nombre, '#2f9e44');
+    _scanToast('✅ ' + product.nombre, '#2f9e44');
+
+    // Quitar resaltado después de 4s
+    setTimeout(function(){
+      document.querySelectorAll('#inv-tbody tr[data-scan-hl]').forEach(function(r){
+        r.style.background = ''; r.style.boxShadow = ''; r.removeAttribute('data-scan-hl');
+      });
+    }, 4000);
   }
 
-  function _clearInvHighlight() {
-    var rows = document.querySelectorAll('#inv-tbody tr[data-scan-highlight]');
-    rows.forEach(function(row) {
-      row.style.background = '';
-      row.style.outline    = '';
-      row.removeAttribute('data-scan-highlight');
-    });
-    var tbody = document.getElementById('inv-tbody');
-    if (tbody) { tbody.style.outline = ''; }
-  }
-
-  /* ── Toast flotante de resultado ───────────────────── */
-  function _showScanToast(msg, color) {
-    var old = document.getElementById('scan-result-toast');
+  function _scanToast(msg, bg) {
+    var old = document.getElementById('_scan_toast');
     if (old) old.remove();
-
-    var toast = document.createElement('div');
-    toast.id  = 'scan-result-toast';
-    toast.textContent = msg;
-    Object.assign(toast.style, {
-      position:     'fixed',
-      bottom:       '24px',
-      left:         '50%',
-      transform:    'translateX(-50%)',
-      background:   color,
-      color:        '#fff',
-      padding:      '12px 24px',
-      borderRadius: '12px',
-      fontWeight:   '700',
-      fontSize:     '14px',
-      zIndex:       '9999',
-      boxShadow:    '0 4px 20px rgba(0,0,0,.3)',
-      fontFamily:   'inherit',
-      whiteSpace:   'nowrap',
-      animation:    'scan-toast-in .25s ease',
+    var t = document.createElement('div');
+    t.id = '_scan_toast';
+    t.textContent = msg;
+    Object.assign(t.style, {
+      position:'fixed', bottom:'28px', left:'50%',
+      transform:'translateX(-50%)',
+      background: bg, color:'#fff',
+      padding:'12px 24px', borderRadius:'12px',
+      fontWeight:'700', fontSize:'14px',
+      zIndex:'9999', boxShadow:'0 4px 24px rgba(0,0,0,.3)',
+      fontFamily:'inherit', whiteSpace:'nowrap',
+      opacity:'0', transition:'opacity .2s',
     });
-
-    if (!document.getElementById('scan-toast-style')) {
-      var s = document.createElement('style');
-      s.id  = 'scan-toast-style';
-      s.textContent = '@keyframes scan-toast-in{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
-      document.head.appendChild(s);
-    }
-
-    document.body.appendChild(toast);
-    setTimeout(function(){ if(toast.parentNode) toast.remove(); }, 2800);
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity = '1'; }, 20);
+    setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 220); }, 3000);
   }
 
   /* ════════════════════════════════════════════════════
