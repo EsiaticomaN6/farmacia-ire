@@ -3204,24 +3204,133 @@ renderLoginUsers();
 
   function _applyToContext(code, product) {
     var buscar = product ? product.nombre : code;
+
     if (_context === 'pos') {
       if (product && typeof posAdd === 'function') {
+        // Producto encontrado: agregar al carrito y limpiar campo
         posAdd(product.id);
-      } else {
         var el = document.getElementById('pos-q');
-        if (el){ el.value = code; if(typeof posSearch==='function') posSearch(); setTimeout(function(){el.focus();},50); }
+        if (el) { el.value = ''; if(typeof posSearch==='function') posSearch(); }
+      } else {
+        // No encontrado: buscar por código y limpiar tras breve delay
+        var el = document.getElementById('pos-q');
+        if (el) {
+          el.value = code;
+          if(typeof posSearch==='function') posSearch();
+          setTimeout(function(){ el.focus(); }, 50);
+          setTimeout(function(){ el.value = ''; if(typeof posSearch==='function') posSearch(); }, 2500);
+        }
       }
+
     } else if (_context === 'inv') {
       var el = document.getElementById('inv-q');
-      if (el){ el.value = buscar; if(typeof invRender==='function') invRender(); el.focus(); }
+      if (el) {
+        el.value = buscar;
+        if(typeof invRender==='function') invRender();
+        // Resaltar fila encontrada
+        setTimeout(function(){ _highlightInvRow(product, !!product); }, 80);
+        // Limpiar campo después de 3s
+        setTimeout(function(){
+          el.value = '';
+          if(typeof invRender==='function') invRender();
+          _clearInvHighlight();
+        }, 3000);
+      }
+
     } else if (_context === 'inv-form') {
-      // Poner el código escaneado directo en el campo de barcode del formulario
       var el = document.getElementById('p-barcode');
       if (el){ el.value = code; el.focus(); }
+
     } else if (_context === 'consulta') {
       var el = document.getElementById('cq-input');
-      if (el){ el.value = buscar; if(typeof cqRender==='function') cqRender(); el.focus(); }
+      if (el) {
+        el.value = buscar;
+        if(typeof cqRender==='function') cqRender();
+        // Limpiar después de 3s
+        setTimeout(function(){
+          el.value = '';
+          if(typeof cqRender==='function') cqRender();
+        }, 3000);
+      }
     }
+  }
+
+  /* ── Resaltar fila en tabla de inventario ──────────── */
+  function _highlightInvRow(product, found) {
+    _clearInvHighlight();
+    if (!product) {
+      // No encontrado: resaltar toda la tabla con borde rojo
+      var tbody = document.getElementById('inv-tbody');
+      if (tbody) {
+        tbody.style.outline = '2px solid var(--red)';
+        tbody.style.borderRadius = '8px';
+      }
+      // Mostrar toast rojo
+      _showScanToast('❌ Producto no encontrado en inventario', '#e03131');
+      return;
+    }
+    // Encontrado: buscar la fila por barcode o nombre y resaltarla verde
+    var rows = document.querySelectorAll('#inv-tbody tr');
+    rows.forEach(function(row) {
+      var cell = row.cells && row.cells[1]; // columna nombre
+      if (cell && cell.textContent.trim() === product.nombre) {
+        row.style.background = 'rgba(47,158,68,.18)';
+        row.style.outline    = '2px solid #2f9e44';
+        row.style.transition = 'all .3s';
+        row.setAttribute('data-scan-highlight', '1');
+        // Scroll a la fila
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+    _showScanToast('✅ ' + product.nombre, '#2f9e44');
+  }
+
+  function _clearInvHighlight() {
+    var rows = document.querySelectorAll('#inv-tbody tr[data-scan-highlight]');
+    rows.forEach(function(row) {
+      row.style.background = '';
+      row.style.outline    = '';
+      row.removeAttribute('data-scan-highlight');
+    });
+    var tbody = document.getElementById('inv-tbody');
+    if (tbody) { tbody.style.outline = ''; }
+  }
+
+  /* ── Toast flotante de resultado ───────────────────── */
+  function _showScanToast(msg, color) {
+    var old = document.getElementById('scan-result-toast');
+    if (old) old.remove();
+
+    var toast = document.createElement('div');
+    toast.id  = 'scan-result-toast';
+    toast.textContent = msg;
+    Object.assign(toast.style, {
+      position:     'fixed',
+      bottom:       '24px',
+      left:         '50%',
+      transform:    'translateX(-50%)',
+      background:   color,
+      color:        '#fff',
+      padding:      '12px 24px',
+      borderRadius: '12px',
+      fontWeight:   '700',
+      fontSize:     '14px',
+      zIndex:       '9999',
+      boxShadow:    '0 4px 20px rgba(0,0,0,.3)',
+      fontFamily:   'inherit',
+      whiteSpace:   'nowrap',
+      animation:    'scan-toast-in .25s ease',
+    });
+
+    if (!document.getElementById('scan-toast-style')) {
+      var s = document.createElement('style');
+      s.id  = 'scan-toast-style';
+      s.textContent = '@keyframes scan-toast-in{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+      document.head.appendChild(s);
+    }
+
+    document.body.appendChild(toast);
+    setTimeout(function(){ if(toast.parentNode) toast.remove(); }, 2800);
   }
 
   /* ════════════════════════════════════════════════════
