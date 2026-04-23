@@ -3171,9 +3171,9 @@ renderLoginUsers();
   }
 
   function _findByBarcode(code) {
-    if (typeof db === 'undefined' || !db.products) return null;
+    if (typeof DB === 'undefined' || !DB.products) return null;
     var c = (code || '').trim();
-    return db.products.find(function(p){
+    return DB.products.find(function(p){
       return p.barcode && p.barcode.toString().trim() === c;
     }) || null;
   }
