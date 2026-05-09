@@ -449,6 +449,74 @@ tbody td{padding:10px 14px;vertical-align:middle}
   background:var(--card);transition:background .15s;}
 .sc-btn:hover{background:var(--accent);}
 /* ─────────────────────────────────────────────────────── */
+
+/* ===== MEJORAS MOVIL: Foto en scanner ===== */
+#sc-photo-row{padding:0 16px 14px;text-align:center;}
+#sc-photo-row small{display:block;color:rgba(255,255,255,.35);font-size:11px;margin-bottom:6px;}
+#sc-photo-label{display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.15);
+  border-radius:10px;padding:9px 16px;cursor:pointer;color:#fff;font-size:13px;font-weight:700;}
+
+/* ===== MEJORAS MOVIL: Ticket WhatsApp modal ===== */
+#wa-ticket-modal-overlay {
+  position:fixed;inset:0;background:rgba(10,14,35,.65);backdrop-filter:blur(4px);
+  z-index:2000;display:none;align-items:center;justify-content:center;padding:20px;
+}
+#wa-ticket-modal-overlay.open { display:flex; }
+#wa-ticket-box {
+  background:#fff;border-radius:20px;padding:24px;width:100%;max-width:420px;
+  max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);
+  animation:fadeUp .3s ease both;
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+
+/* ===== MEJORAS MOVIL: Corte WA step2 ===== */
+#corte-wa-step {
+  display:none;margin-top:18px;background:#f0fdf4;border:1.5px solid #86efac;
+  border-radius:12px;padding:12px;text-align:center;
+}
+.corte-wa-btn {
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  background:#25d366;color:#fff;border:none;border-radius:10px;
+  padding:12px 20px;font-family:inherit;font-size:14px;font-weight:700;
+  cursor:pointer;margin-top:8px;width:100%;
+}
+.corte-wa-btn:hover { filter:brightness(1.1); }
+
+/* ===== MEJORAS MOVIL: Context menu inventario ===== */
+.inv-ctx-menu {
+  position:fixed;background:#fff;border:1px solid var(--border);
+  border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);
+  z-index:1500;min-width:160px;padding:6px;display:none;
+}
+.inv-ctx-menu.open { display:block; }
+.inv-ctx-item {
+  display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;
+  color:var(--text);transition:background .1s;
+}
+.inv-ctx-item:hover { background:var(--bg); }
+.inv-ctx-item.danger { color:var(--red); }
+.inv-ctx-item.danger:hover { background:#fff0f0; }
+
+/* ===== MEJORAS MOVIL: Consulta "Al ticket" button ===== */
+.cq-al-ticket-btn {
+  background:var(--green);color:#fff;border:none;border-radius:8px;
+  padding:7px 14px;font-family:inherit;font-size:12px;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:filter .15s;
+}
+.cq-al-ticket-btn:hover { filter:brightness(1.1); }
+.cq-al-ticket-btn:disabled { background:var(--text3);cursor:not-allowed; }
+
+/* ===== MEJORAS MOVIL: Ventas de hoy en POS ===== */
+#today-sales-wrap {
+  margin-top:14px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px 16px;
+}
+#today-sales-wrap h5 {
+  font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;
+}
+
 </style>
 </head>
 <body>
@@ -554,6 +622,12 @@ tbody td{padding:10px 14px;vertical-align:middle}
       </div>
 
       <div id="pos-cart">
+        <!-- Ventas de hoy (Mejora Movil) -->
+        <div id="today-sales-wrap" style="display:none">
+          <h5>🧾 Ventas de hoy</h5>
+          <div id="today-sales-list"></div>
+        </div>
+
         <div class="cart-h">
           <h4>🛒 Ticket de venta</h4>
           <div style="display:flex;gap:6px">
@@ -639,7 +713,8 @@ tbody td{padding:10px 14px;vertical-align:middle}
         <input type="date" id="vt-to" onchange="vtRender()">
         <input id="vt-q" type="text" placeholder="🔍  Cliente / ticket…" oninput="vtRender()" style="width:180px">
         <div class="spacer"></div>
-        <button class="btn btn-outline" onclick="exportVentasExcel()">📊 Excel</button>
+        <button class="btn btn-outline" onclick="exportVentasExcel()">📊 Excel (resumen)</button>
+        <button class="btn btn-outline" style="background:#e7f9ee;color:var(--green);border-color:var(--green)" onclick="exportSalesExcel()">📊 Excel (detalle)</button>
       </div>
       <div id="vt-wrap" class="tbl-scroll">
         <table>
@@ -914,6 +989,10 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <div class="form-actions" style="padding:12px 18px;border-top:1px solid var(--border)">
       <button class="btn btn-outline" onclick="closeModal('m-ticket')">Cerrar</button>
       <button class="btn btn-primary" onclick="doPrint()">🖨️ Imprimir</button>
+      <button class="btn" style="background:#25d366;color:#fff;border:none;cursor:pointer;font-family:inherit;font-weight:700;border-radius:8px;padding:8px 14px;font-size:13px"
+        onclick="if(currentTicket)showWATicket(currentTicket)">
+        📲 WhatsApp
+      </button>
     </div>
   </div>
 </div>
@@ -1105,6 +1184,14 @@ tbody td{padding:10px 14px;vertical-align:middle}
       <button class="btn btn-outline" onclick="imprimirCorte()">🖨️ Imprimir corte</button>
       <button class="btn btn-outline" onclick="exportarCorteExcel()">📊 Excel</button>
       <button class="btn-corte-main" onclick="confirmarCorte()">✅ Confirmar corte e ir a Reportes</button>
+    </div>
+    <!-- Botón WhatsApp corte (Mejora Movil) -->
+    <div id="corte-wa-step">
+      <div style="font-size:12px;font-weight:700;color:#15803d;margin-bottom:8px">📊 Reporte generado</div>
+      <button class="corte-wa-btn" onclick="enviarCorteWA()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        Enviar resumen por WhatsApp
+      </button>
     </div>
   </div>
 </div>
@@ -1560,6 +1647,8 @@ function procesarVenta(){
   dbSave();
   currentTicket=sale;
   showTicket(sale);
+  showWATicket(sale);  // Mejora Movil: mostrar modal con WhatsApp
+  renderTodaySalesList(); // Mejora Movil: actualizar ventas de hoy
   clearCart();
   document.getElementById('pago-recibido').value='';
   document.getElementById('cambio-box').classList.remove('vis');
@@ -1764,6 +1853,7 @@ function invRender(){
         <div style="display:flex;gap:4px">
           <button class="btn-icon" onclick="openProdModal('${p.id}')" title="Editar">✏️</button>
           <button class="btn-icon del" onclick="delProd('${p.id}')" title="Eliminar">🗑️</button>
+          <button class="btn-icon" onclick="showInvCtxMenu(event,'${p.id}')" title="Más opciones" style="font-size:16px">⋯</button>
         </div>
       </td>
     </tr>`;
@@ -2485,8 +2575,9 @@ function confirmarCorte(){
   nav('reportes');
   // Asegurar que reportes muestra el día de hoy
   renderReportes();
-  alert(`✅ Corte registrado correctamente.
-Total del día: ${fmt(corteRecord.total)} · ${corteRecord.tickets} ticket(s)`);
+  // Mejora Movil: mostrar botón WhatsApp en el corte
+  _buildCorteWAUrlAndShow(corteRecord, todaySales);
+  alert(`✅ Corte registrado correctamente.\nTotal del día: ${fmt(corteRecord.total)} · ${corteRecord.tickets} ticket(s)`);
 }
 
 function imprimirCorte(){
@@ -2669,6 +2760,7 @@ function cqRender(){
       <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
         <button class="btn btn-outline btn-sm" onclick="nav('inv');setTimeout(()=>{document.getElementById('inv-q').value='${p.nombre.replace(/'/g,"\'")}';invRender();},100)">📦 Ver en inventario</button>
         ${p.stock>0?`<button class="btn btn-primary btn-sm" onclick="posAdd('${p.id}');nav('pos')">🛒 Agregar al ticket</button>`:''}
+        ${p.stock>0?`<button class="cq-al-ticket-btn" id="cq-btn-${p.id}" onclick="cqAddToTicket('${p.id}')">➕ Al ticket</button>`:`<button class="cq-al-ticket-btn" disabled>Sin stock</button>`}
       </div>
     </div>`).join('');
 }
@@ -2932,7 +3024,319 @@ renderTotals();
 vtSetDates();
 // Mostrar pantalla de login al iniciar
 renderLoginUsers();
+// Mejora Movil: asignar SKUs y mostrar ventas de hoy
+assignSKUs();
+renderTodaySalesList();
+
+
+// ═══════════════════════════════════════════════════════════
+// MEJORAS MOVIL: Nuevas funciones portadas de Movil.html
+// ═══════════════════════════════════════════════════════════
+
+// ───── WhatsApp Ticket Modal ─────
+function showWATicket(sale) {
+  const text = buildTicketText(sale);
+  const el = document.getElementById('wa-ticket-text');
+  const numEl = document.getElementById('wa-ticket-num');
+  const totEl = document.getElementById('wa-ticket-total');
+  const linkEl = document.getElementById('wa-ticket-link');
+  if (!el) return;
+  el.value = text;
+  if (numEl) numEl.textContent = sale.id;
+  if (totEl) totEl.textContent = fmt(sale.total);
+  const waUrl = 'https://wa.me/525527697987?text=' + encodeURIComponent(text);
+  if (linkEl) linkEl.href = waUrl;
+  document.getElementById('wa-ticket-modal-overlay').classList.add('open');
+}
+
+function closeWATicket() {
+  document.getElementById('wa-ticket-modal-overlay').classList.remove('open');
+}
+
+// ───── Ventas de hoy en POS ─────
+function renderTodaySalesList() {
+  const todayStr = today();
+  const todaySales = DB.sales.filter(function(s){ return s.fecha.startsWith(todayStr); });
+  const wrap = document.getElementById('today-sales-wrap');
+  const list = document.getElementById('today-sales-list');
+  if (!wrap || !list) return;
+  if (!todaySales.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  list.innerHTML = todaySales.slice(0,5).map(function(s){ return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">' +
+    '<div>' +
+      '<div style="font-weight:700;font-size:13px">' + s.id + '</div>' +
+      '<div style="font-size:11px;color:var(--text3)">' + new Date(s.fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) + ' · ' + s.cajero + '</div>' +
+    '</div>' +
+    '<div style="text-align:right">' +
+      '<div style="font-weight:800;font-size:15px;color:var(--accent)">' + fmt(s.total) + '</div>' +
+      '<div style="font-size:11px;color:var(--text3)">' + s.items.reduce(function(a,c){return a+c.qty;},0) + ' artículos</div>' +
+    '</div>' +
+  '</div>'; }).join('');
+}
+
+// ───── Consulta "Al ticket" ─────
+function cqAddToTicket(pid) {
+  const p = DB.products.find(function(x){ return x.id === pid; });
+  if (!p || p.stock <= 0) return;
+  posAdd(pid);
+  const btn = document.getElementById('cq-btn-' + pid);
+  if (btn) {
+    btn.textContent = '✅ Agregado';
+    setTimeout(function(){ btn.textContent = '➕ Al ticket'; }, 1500);
+  }
+  const t = document.getElementById('toast');
+  if (t) { t.textContent = '✅ ' + p.nombre + ' agregado al ticket'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
+}
+
+// ───── Inventory Context Menu ─────
+var _invCtxId = null;
+
+function showInvCtxMenu(e, pid) {
+  e.stopPropagation();
+  _invCtxId = pid;
+  const menu = document.getElementById('inv-ctx-menu');
+  if (!menu) return;
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 175) + 'px';
+  menu.style.top  = Math.min(e.clientY, window.innerHeight - 180) + 'px';
+  menu.classList.add('open');
+  e.preventDefault();
+}
+
+document.addEventListener('click', function() {
+  const m = document.getElementById('inv-ctx-menu');
+  if (m) m.classList.remove('open');
+});
+
+function invCtxEdit() {
+  const m = document.getElementById('inv-ctx-menu');
+  if (m) m.classList.remove('open');
+  openProdModal(_invCtxId);
+}
+
+function invCtxAddStock() {
+  const m = document.getElementById('inv-ctx-menu');
+  if (m) m.classList.remove('open');
+  const prod = DB.products.find(function(p){ return p.id === _invCtxId; });
+  if (!prod) return;
+  const qty = prompt('¿Cuántas unidades agregar a "' + prod.nombre + '"? (stock actual: ' + prod.stock + ')');
+  if (!qty || isNaN(qty)) return;
+  prod.stock += parseInt(qty);
+  dbSave();
+  invRender();
+  const t = document.getElementById('toast');
+  if (t) { t.textContent = '📦 +' + qty + ' unidades a ' + prod.nombre; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
+}
+
+function invCtxHistory() {
+  const m = document.getElementById('inv-ctx-menu');
+  if (m) m.classList.remove('open');
+  const prod = DB.products.find(function(p){ return p.id === _invCtxId; });
+  const related = DB.sales.filter(function(s){ return s.items.some(function(i){ return i.id === _invCtxId; }); });
+  const info = related.length
+    ? related.map(function(s){ return s.id + ' · ' + new Date(s.fecha).toLocaleDateString('es-MX') + ' · -' + s.items.find(function(i){return i.id===_invCtxId;}).qty + ' uds'; }).join('\n')
+    : 'Sin movimientos registrados';
+  alert('Movimientos de ' + (prod ? prod.nombre : 'producto') + ':\n\n' + info);
+}
+
+function invCtxDelete() {
+  const m = document.getElementById('inv-ctx-menu');
+  if (m) m.classList.remove('open');
+  delProd(_invCtxId);
+}
+
+// ───── SKU automático ─────
+function genSKU(p) {
+  if (p.codigo) return p.codigo;
+  const prefix = (p.dept||'GEN').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z]/g,'').substring(0,3).padEnd(3,'X');
+  const seq = String(DB.products.indexOf(p) + 1).padStart(4,'0');
+  p.codigo = prefix + '-' + seq;
+  return p.codigo;
+}
+
+function assignSKUs() {
+  DB.products.forEach(function(p, i) {
+    if (!p.codigo) {
+      const prefix = (p.dept||'GEN').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z]/g,'').substring(0,3).padEnd(3,'X');
+      p.codigo = prefix + '-' + String(i+1).padStart(4,'0');
+    }
+  });
+  dbSave();
+}
+
+// ───── exportSalesExcel (Historial de ventas) ─────
+function exportSalesExcel() {
+  if (!DB.sales.length) { alert('No hay ventas para exportar.'); return; }
+  const methodNames = { efectivo:'Efectivo', tarjeta:'Tarjeta', transferencia:'Transferencia' };
+  const rows = [];
+  DB.sales.forEach(function(s) {
+    s.items.forEach(function(item, i) {
+      rows.push({
+        'Ticket':       s.id,
+        'Fecha':        new Date(s.fecha).toLocaleDateString('es-MX'),
+        'Hora':         new Date(s.fecha).toLocaleTimeString('es-MX'),
+        'Cajero':       s.cajero,
+        'Producto':     item.nombre,
+        'Cantidad':     item.qty,
+        'Precio Unit.': item.precio,
+        'Subtotal':     item.precio * item.qty,
+        'Descuento':    i === 0 ? (s.descAmt||0) : 0,
+        'IVA':          i === 0 ? (s.iva||0) : 0,
+        'Total':        i === 0 ? s.total : '',
+        'Forma Pago':   i === 0 ? (methodNames[s.pago]||s.pago) : '',
+      });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [10,12,10,14,30,8,12,12,10,10,12,12].map(function(w){return{wch:w};});
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Historial de Ventas');
+  XLSX.writeFile(wb, 'historial_ventas.xlsx');
+}
+
+// ───── WhatsApp Corte ─────
+var _corteWAUrl = '';
+
+function _buildCorteWAUrlAndShow(corteRecord, todaySales) {
+  const now = new Date();
+  const ticketLines = todaySales.map(function(s) {
+    return '  ' + s.id + '  ' + new Date(s.fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) + '  ' + fmt(s.total);
+  }).join('\n');
+  const parts = [];
+  if (corteRecord.efectivo > 0) parts.push('  💵 Efectivo: ' + fmt(corteRecord.efectivo));
+  if (corteRecord.tarjeta > 0) parts.push('  💳 Tarjeta: ' + fmt(corteRecord.tarjeta));
+  if (corteRecord.transferencia > 0) parts.push('  🏦 Transferencia: ' + fmt(corteRecord.transferencia));
+  const methodLinesWA = parts.join('\n');
+
+  const text = '🏧 *CORTE DE CAJA*\n' +
+    '🏥 ' + (DB.config.nombre||'Farmacia IRE') + '\n' +
+    '📅 ' + now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + '\n' +
+    '🕐 ' + now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) + '\n' +
+    '─────────────────\n' +
+    '📋 *Ventas del día: ' + corteRecord.tickets + '*\n' +
+    (ticketLines || '  Sin ventas registradas') + '\n' +
+    '─────────────────\n' +
+    '💳 *Por forma de pago:*\n' +
+    (methodLinesWA || '  Sin ventas') + '\n' +
+    '─────────────────\n' +
+    '💰 *TOTAL DEL DÍA: ' + fmt(corteRecord.total) + '*\n' +
+    '─────────────────\n' +
+    '👤 Cajero: ' + (corteRecord.cajero||'—');
+
+  _corteWAUrl = 'https://wa.me/525527697987?text=' + encodeURIComponent(text);
+
+  // Show WA step
+  const waStep = document.getElementById('corte-wa-step');
+  if (waStep) {
+    waStep.style.display = 'block';
+    document.getElementById('m-corte').classList.add('open');
+  }
+}
+
+function enviarCorteWA() {
+  const waStep = document.getElementById('corte-wa-step');
+  if (waStep) waStep.style.display = 'none';
+  cerrarCorteModal();
+  setTimeout(function() {
+    const a = document.createElement('a');
+    a.href = _corteWAUrl;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, 200);
+}
+
+// ───── openScanner genérico para botones 📷 ─────
+window.openScanner = function(inputId, callback) {
+  window._scInputId  = inputId;
+  window._scCallback = typeof callback === 'function' ? callback : null;
+  scOpen('generic');
+};
+
+// ───── scFromPhoto: escanear desde foto ─────
+window.scFromPhoto = function(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('sc-status');
+  if (statusEl) statusEl.textContent = 'Analizando imagen…';
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    let w = img.width, h = img.height;
+    const max = 1200;
+    if (w > max || h > max) { const r = Math.min(max/w,max/h); w=Math.round(w*r); h=Math.round(h*r); }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    if (window.BarcodeDetector) {
+      new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39']})
+        .detect(canvas)
+        .then(function(res) {
+          if (res && res[0]) {
+            scClose();
+          } else {
+            if (statusEl) statusEl.textContent = '⚠️ No se detectó código — intenta de nuevo';
+          }
+        }).catch(function(){ if (statusEl) statusEl.textContent = '⚠️ Error al analizar imagen'; });
+    } else {
+      if (statusEl) statusEl.textContent = '⚠️ Foto no compatible — escribe el código';
+    }
+    input.value = '';
+  };
+  img.src = url;
+};
+
+
 </script>
+
+
+<!-- ===== WHATSAPP TICKET MODAL (Mejora Movil) ===== -->
+<div id="wa-ticket-modal-overlay">
+  <div id="wa-ticket-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">🎉 Venta completada</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">
+          <span id="wa-ticket-num"></span> · <span id="wa-ticket-total" style="color:var(--accent);font-weight:700"></span>
+        </div>
+      </div>
+      <button onclick="closeWATicket()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2)">✕</button>
+    </div>
+    <textarea id="wa-ticket-text" readonly
+      style="width:100%;height:200px;background:var(--bg);border:1.5px solid var(--border);
+             border-radius:10px;padding:12px;font-family:'JetBrains Mono',monospace;font-size:12px;
+             color:var(--text);resize:none;line-height:1.6;outline:none"></textarea>
+    <div style="margin-top:14px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px">
+      <div style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:10px">📲 Enviar por WhatsApp</div>
+      <a id="wa-ticket-link" href="#" target="_blank" rel="noopener"
+        onclick="setTimeout(function(){closeWATicket();},300)"
+        style="width:100%;background:#25d366;color:#fff;border-radius:10px;
+               padding:12px;font-family:inherit;font-size:14px;font-weight:700;
+               display:flex;align-items:center;justify-content:center;gap:8px;
+               text-decoration:none;box-sizing:border-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+        Enviar ticket por WhatsApp
+      </a>
+      <div style="font-size:10px;color:#16a34a;margin-top:6px;text-align:center">Número: +52 55 2769 7987</div>
+    </div>
+    <button onclick="closeWATicket()" style="width:100%;margin-top:12px;background:var(--bg);color:var(--text2);border:1.5px solid var(--border);border-radius:10px;padding:12px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">
+      Cerrar
+    </button>
+  </div>
+</div>
+
+<!-- ===== INVENTORY CONTEXT MENU (Mejora Movil) ===== -->
+<div class="inv-ctx-menu" id="inv-ctx-menu">
+  <div class="inv-ctx-item" onclick="invCtxEdit()">✏️ Editar</div>
+  <div class="inv-ctx-item" onclick="invCtxAddStock()">📦 Agregar Stock</div>
+  <div class="inv-ctx-item" onclick="invCtxHistory()">📋 Ver Movimientos</div>
+  <div class="inv-ctx-item danger" onclick="invCtxDelete()">🗑️ Eliminar</div>
+</div>
 
 <!-- SCANNER MODAL -->
 <div id="sc-overlay">
@@ -2946,9 +3350,16 @@ renderLoginUsers();
     </div>
     <div id="sc-status">Iniciando cámara…</div>
     <div id="sc-manual">
-      <input id="sc-manual-inp" type="text" inputmode="numeric" placeholder="O escribe el código…"
+      <input id="sc-manual-inp" type="text" inputmode="numeric" maxlength="13" placeholder="O escribe el código…"
         onkeydown="if(event.key==='Enter')scManual()">
       <button onclick="scManual()">Buscar</button>
+    </div>
+    <div id="sc-photo-row">
+      <small>¿No enfoca? Toma una foto</small>
+      <label id="sc-photo-label">
+        📸 Foto con cámara nativa
+        <input type="file" accept="image/*" capture="environment" style="display:none" onchange="scFromPhoto(this)">
+      </label>
     </div>
   </div>
 </div>
@@ -2984,9 +3395,11 @@ var VOTES    = 3;
 /* ── API pública ─────────────────────────────────── */
 window.scOpen = function(ctx) {
   _ctx = ctx; _done = false; _votes = {};
+  window._scLastCtx = ctx; // guardar contexto para scFromPhoto
   _cleanViewport();
   document.getElementById('sc-overlay').classList.add('open');
-  document.getElementById('sc-manual-inp').value = '';
+  var inp = document.getElementById('sc-manual-inp');
+  if (inp) inp.value = '';
   _setStatus('Iniciando cámara…');
   setTimeout(_init, 100);
 };
@@ -3116,6 +3529,19 @@ function _vote(code) {
    El campo queda con el código — al borrarlo aparecen todos.
 ════════════════════════════════════════════════════ */
 function _apply(code) {
+  code = String(code).substring(0, 13);
+
+  // Contexto genérico: botones 📷 que llaman openScanner(inputId, callback)
+  if (_ctx === 'generic') {
+    var inp = document.getElementById(window._scInputId || '');
+    if (inp) { inp.value = code; inp.focus(); inp.dispatchEvent(new Event('input')); }
+    if (typeof window._scCallback === 'function') window._scCallback(code);
+    window._scLastCtx = 'generic';
+    return;
+  }
+
+  window._scLastCtx = _ctx;
+
   if (_ctx === 'pos') {
     var el = document.getElementById('pos-q');
     if (!el) return;
