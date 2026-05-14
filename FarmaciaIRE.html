@@ -1346,7 +1346,7 @@ function setPosView(mode){
   renderInventory();
 }
 
-function renderInventory(){
+function posRenderGrid(){
   const q=(document.getElementById('pos-q').value||'').toLowerCase();
   const dept=document.getElementById('pos-dept').value;
   const g=document.getElementById('prod-grid');
@@ -1448,7 +1448,6 @@ function posScanResult(p){
     <div class="pc-price">${fmt(p.price)}</div>
   </div>`;
 }
-function addToCartFromConsulta(id){addToCart(id);document.getElementById('pos-q').value='';document.getElementById('pos-ac').classList.remove('open');renderInventory();}
 
 function addToCart(id){
   const p=products.find(x=>x.id===id);
@@ -1599,10 +1598,6 @@ function processSale(){
 
 function confirmedSale(){
   closeModal('m-confirm-venta');
-  confirmedSale();
-}
-
-function confirmedSale(){
   if(!cart.length)return;
   const desc=parseFloat(document.getElementById('cart-desc').value||0);
   const iva=parseFloat(config.iva??16);
@@ -2532,9 +2527,6 @@ function corteDeCaja(){
   document.getElementById('m-corte').classList.add('open');
 }
 
-function closeModal(){
-  document.getElementById('m-corte').classList.remove('open');
-}
 
 function corteConfirmar(){
   // Guardar el corte en DB
@@ -2568,7 +2560,7 @@ function corteConfirmar(){
   alert(`✅ Corte registrado correctamente.\nTotal del día: ${fmt(corteRecord.total)} · ${corteRecord.tickets} ticket(s)`);
 }
 
-function doPrint(){
+function imprimirCorte(){
   const todayStr = today();
   const now = new Date();
   const todaySales = sales.filter(s=>(s.fecha||s.date).startsWith(todayStr));
@@ -2644,7 +2636,7 @@ function exportarCorteExcel(){
   XLSX.writeFile(wb,`Corte_${config.name.replace(/\s/g,'_')}_${todayStr}.xlsx`);
 }
 
-function resetAll(){
+function emergencyReset(){
   if(!confirm('Esto creará el usuario Administrador (sin contraseña) y conservará tus datos de ventas e inventario. ¿Continuar?')) return;
   try{
     let d = {};
@@ -3118,11 +3110,6 @@ function ctxViewHistory() {
   alert('Movimientos de ' + (prod ? prod.name : 'producto') + ':\n\n' + info);
 }
 
-function ctxDelete() {
-  const m = document.getElementById('inv-ctx-menu');
-  if (m) m.classList.remove('open');
-  ctxDelete(ctxTargetId);
-}
 
 // ───── SKU automático ─────
 function genSKU(p) {
