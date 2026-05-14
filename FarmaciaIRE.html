@@ -3692,7 +3692,7 @@ function _driveRestoreToken() {
 function driveConnect() {
   if (_driveToken) { _drivePull(); return; }
   if (!_driveReady) { showToast('⏳ Cargando, intenta en un momento'); return; }
-  if (DRIVE_CLIENT_ID === '866437613780-sg0ttkt4mtn6h0er2cdjf1vf1tma27b1.apps.googleusercontent.com') {
+  if (DRIVE_CLIENT_ID === 'PASTE_YOUR_GOOGLE_CLIENT_ID_HERE') {
     alert('⚙️ Configura tu Google Client ID.\n\n1. Ve a console.cloud.google.com\n2. APIs → Drive API → Habilitar\n3. Credenciales → OAuth 2.0 → Aplicación web\n4. Pega el Client ID en el código (DRIVE_CLIENT_ID)');
     return;
   }
