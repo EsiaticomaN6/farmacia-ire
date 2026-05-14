@@ -39,8 +39,8 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;width:100%;overflow:hidden}
-body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;width:100vw;display:flex;font-size:14px}
+html,body{height:100%;width:100%;overflow:hidden;font-family:'Plus Jakarta Sans',-apple-system-ui-rounded,sans-serif}
+body{font-family:'Plus Jakarta Sans',-apple-system-ui-rounded,sans-serif;-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg);color:var(--text);height:100vh;width:100vw;display:flex;font-size:14px}
 
 /* ── SIDEBAR ── */
 #sidebar{width:clamp(180px,15vw,220px);flex-shrink:0;background:var(--sidebar);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow-y:auto;overflow-x:hidden;min-width:0}
@@ -2370,17 +2370,18 @@ function loginAs(id){
   document.getElementById('pw-modal-title').textContent = 'Contraseña – '+user.name;
   document.getElementById('pw-input').value='';
   document.getElementById('pw-error').style.display='none';
-  document.getElementById('pw-modal').classList.add('active');
+  document.getElementById('pw-modal').style.display='flex';
   document.getElementById('pw-modal').dataset.uid = user.id;
-  setTimeout(()=>document.getElementById('pw-input').focus(),200);
+  setTimeout(()=>{const i=document.getElementById('pw-input');if(i){i.value='';i.focus();}},200);
 }
 
 function closePwModal(){
-  document.getElementById('pw-modal').classList.remove('active');
+  document.getElementById('pw-modal').style.display='none';
 }
 
 function confirmPw(){
   const uid = document.getElementById('pw-modal').dataset.uid;
+  if(!uid) return;
   const user = users.find(u=>String(u.id)===String(uid));
   const pw = document.getElementById('pw-input').value;
   if(pw===user.password){
@@ -3818,6 +3819,22 @@ async function _drivePull() {
 function _driveMerge(remote) {
   let changed = false;
 
+  // Si el remoto tiene _cleared, borrar datos locales también
+  if (remote._cleared) {
+    products = []; sales = []; cortes = []; clientes = []; entradas = [];
+    users = [{ id: 1, name: 'Administrador', role: 'admin', color: '#4f6ef7', password: '' }];
+    ['products','sales','cortes','clientes','entradas','users'].forEach(k =>
+      localStorage.setItem('fire_' + k, JSON.stringify(
+        k==='products'?products:k==='sales'?sales:k==='cortes'?cortes:
+        k==='clientes'?clientes:k==='entradas'?entradas:users))
+    );
+    clearTimeout(_syncTimer); _syncPending = false;
+    posRenderGrid(); renderInventory(); renderSales();
+    renderTodaySales(); renderReports(); fillDeptList();
+    showToast('🗑 Datos borrados desde otro dispositivo');
+    return;
+  }
+
   function mergeById(local, rem) {
     if (!Array.isArray(rem) || !rem.length) return { arr: local, changed: false };
     const map = new Map(local.map(x => [String(x.id), x]));
@@ -3899,30 +3916,49 @@ save = (function() {
 
 async function driveClearFile() {
   if (!_driveToken) { showToast('Primero conecta Drive'); return; }
-  if (!confirm('¿Borrar TODOS los datos?\nEsto borrará el inventario, ventas y configuración tanto en Drive como en este dispositivo.')) return;
+  if (!confirm('¿Borrar TODOS los datos?\nEsto borrará el inventario y ventas en Drive Y en todos los dispositivos conectados.')) return;
   _driveSetStatus('syncing', 'Borrando…');
+  // Cancelar cualquier sync pendiente para no re-subir datos viejos
+  clearTimeout(_syncTimer);
+  _syncPending = false;
   try {
-    // 1. Borrar archivo en Drive
-    const fid = await _driveGetFileId();
-    await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fid}`,
-      { method: 'DELETE', headers: { Authorization: 'Bearer ' + _driveToken } }
-    );
-    _driveFileId = null;
-    // 2. Borrar datos locales
+    // 1. Limpiar datos locales primero
     products = []; sales = []; cortes = []; clientes = []; entradas = [];
     config = { name: 'Farmacia IRE', iva: 0, currency: 'MXN', minstock: 5,
       autoprint: false, ticketmsg: '¡Gracias por su compra!',
       cajero: 'Administrador', tel: '', dir: '', rfc: '', email: '', logo: null };
     users = [{ id: 1, name: 'Administrador', role: 'admin', color: '#4f6ef7', password: '' }];
     ['products','sales','cortes','clientes','entradas','config','users'].forEach(k =>
-      localStorage.setItem('fire_'+k, JSON.stringify(eval(k)))
+      localStorage.setItem('fire_' + k, JSON.stringify(
+        k==='products'?products:k==='sales'?sales:k==='cortes'?cortes:
+        k==='clientes'?clientes:k==='entradas'?entradas:
+        k==='config'?config:users))
+    );
+    // 2. Subir payload vacío a Drive (con _cleared:true y _ts actual)
+    //    Así cuando Movil haga pull, verá _cleared y borrará sus datos también
+    const emptyPayload = JSON.stringify({
+      _v: 2, _ts: Date.now(), _cleared: true,
+      _device: 'FarmaciaIRE',
+      products: [], sales: [], cortes: [],
+      config: { name: 'Farmacia IRE', iva: 0, currency: 'MXN', minstock: 5,
+        autoprint: false, ticketmsg: '¡Gracias por su compra!' },
+      users: [{ id: 1, name: 'Administrador', role: 'admin', color: '#4f6ef7', password: '' }]
+    });
+    const fid = await _driveGetFileId();
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({
+      name: DRIVE_FILENAME, mimeType: 'application/json'
+    })], { type: 'application/json' }));
+    form.append('file', new Blob([emptyPayload], { type: 'application/json' }));
+    await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,
+      { method: 'PATCH', headers: { Authorization: 'Bearer ' + _driveToken }, body: form }
     );
     // 3. Refrescar UI
     posRenderGrid(); renderInventory(); renderSales();
     renderTodaySales(); renderReports(); fillDeptList();
     _driveSetStatus('ok', 'Datos borrados');
-    showToast('✅ Datos borrados en Drive y dispositivo');
+    showToast('✅ Datos borrados en todos los dispositivos');
   } catch(e) {
     console.error('driveClearFile:', e);
     _driveSetStatus('error', 'Error al borrar');
@@ -3940,5 +3976,24 @@ document.addEventListener('visibilitychange', () => {
 });
 
 </script>
+
+<!-- ══════════ PW MODAL ══════════ -->
+<div id="pw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--card);border-radius:16px;padding:28px;width:320px;max-width:90vw;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 40px rgba(0,0,0,.3)">
+    <div style="font-weight:700;font-size:16px" id="pw-modal-title">Contraseña</div>
+    <input type="password" id="pw-input" placeholder="Contraseña…"
+      onkeydown="if(event.key==='Enter')confirmPw()"
+      style="padding:10px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-family:inherit;font-size:14px;width:100%;box-sizing:border-box">
+    <div id="pw-error" style="display:none;color:var(--red);font-size:12px;text-align:center">❌ Contraseña incorrecta</div>
+    <button onclick="confirmPw()"
+      style="padding:10px;border-radius:8px;background:var(--accent);color:#fff;border:none;font-family:inherit;font-weight:700;font-size:14px;cursor:pointer">
+      🔓 Entrar
+    </button>
+    <button onclick="closePwModal()"
+      style="padding:8px;border-radius:8px;background:none;border:1.5px solid var(--border);color:var(--text2);font-family:inherit;font-size:13px;cursor:pointer">
+      ← Volver
+    </button>
+  </div>
+</div>
 </body>
 </html>
