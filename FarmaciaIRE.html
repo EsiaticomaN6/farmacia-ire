@@ -904,15 +904,30 @@ body {
   /* Hide mobile-only cart button on iPad */
   #mobile-cart-btn { display: none !important; }
   #cart-count { display: none; }
-  html, body {
+  html {
     position: static;
-    overflow: auto;
+    overflow: hidden;
     height: 100%;
+    width: 100%;
+  }
+  body {
+    position: static;
+    overflow: hidden;
+    height: 100vh;
+    width: 100%;
   }
 
   #app-screen {
     height: 100vh;
-    height: -webkit-fill-available;
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .app-layout {
+    display: flex !important;
+    flex: 1;
+    overflow: hidden;
+    flex-direction: row;
   }
 
   /* Sidebar always visible on iPad */
@@ -1077,7 +1092,7 @@ body {
 <!-- ======== APP SHELL ======== -->
 <div id="app-screen">
   <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
-
+  <div class="app-layout">
   <!-- Sidebar -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-brand" onclick="triggerLogoUpload()" title="Toca para cambiar el logo" style="cursor:pointer;position:relative">
@@ -1445,7 +1460,8 @@ body {
       </div>
 
     </div><!-- /main-content -->
-  </div>
+  </div><!-- /main column -->
+  </div><!-- /app-layout -->
 </div>
 
 <!-- ===== PRODUCT SEARCH MODAL ===== -->
