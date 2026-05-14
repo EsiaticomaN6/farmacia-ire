@@ -517,6 +517,28 @@ tbody td{padding:10px 14px;vertical-align:middle}
   font-size:13px;font-weight:800;color:var(--text);margin-bottom:10px;
 }
 
+
+/* ── Google Drive Sync ── */
+#drive-btn{
+  display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;
+  padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.06);cursor:pointer;font-family:inherit;
+  font-size:12px;font-weight:600;color:rgba(255,255,255,.8);
+  transition:background .15s;text-align:left;
+}
+#drive-btn:hover{background:rgba(255,255,255,.12)}
+#drive-icon{width:16px;height:16px;flex-shrink:0}
+#drive-status{
+  display:flex;align-items:center;gap:5px;font-size:10px;
+  color:rgba(255,255,255,.4);margin-top:4px;padding:0 4px;min-height:14px;
+}
+#drive-dot{width:6px;height:6px;border-radius:50%;background:#888;flex-shrink:0;transition:background .3s}
+#drive-dot.ok{background:#4ade80}
+#drive-dot.syncing{background:#fbbf24;animation:pulse-dot .8s infinite}
+#drive-dot.error{background:#f87171}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+#drive-status-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+
 </style>
 </head>
 <body>
@@ -577,6 +599,23 @@ tbody td{padding:10px 14px;vertical-align:middle}
         <div class="user-role" id="sb-role">Administrador</div>
       </div>
       <button onclick="logoutPrompt()" title="Cerrar sesión" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);font-size:16px;padding:2px" title="Salir">🚪</button>
+    </div>
+  <!-- Google Drive Sync -->
+  <div style="padding:4px 0 0">
+    <button id="drive-btn" onclick="driveConnect()">
+      <svg id="drive-icon" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
+        <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+        <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
+        <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
+        <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+        <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+        <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+      </svg>
+      <span id="drive-btn-label">Conectar Drive</span>
+    </button>
+    <div id="drive-status" style="display:none">
+      <div id="drive-dot"></div>
+      <span id="drive-status-text">—</span>
     </div>
   </div>
 </div>
@@ -3610,5 +3649,264 @@ document.getElementById('sc-overlay').addEventListener('click', function(e){
 })();
 </script>
 
+
+<script>
+// ═══════════════════════════════════════════════════════
+// GOOGLE DRIVE SYNC
+// ═══════════════════════════════════════════════════════
+// SETUP: https://console.cloud.google.com/
+//  1. Crear proyecto → APIs & Services → Drive API → Enable
+//  2. OAuth consent screen → External → Add scopes: drive.appdata
+//  3. Credenciales → Crear ID de cliente OAuth → Aplicación web
+//  4. Authorized origins: tu dominio (ej. https://esiaticoman6.github.io)
+//  5. Pega tu Client ID abajo:
+const DRIVE_CLIENT_ID = 'PASTE_YOUR_GOOGLE_CLIENT_ID_HERE';
+const DRIVE_SCOPE     = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILENAME  = 'farmacia-ire-sync.json';
+
+let _driveToken  = null;
+let _driveFileId = null;
+let _syncTimer   = null;
+let _driveReady  = false;
+let _lastSyncTs  = 0;
+let _syncPending = false;
+
+(function loadGapi() {
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.onload = () => { _driveReady = true; _driveRestoreToken(); };
+  document.head.appendChild(s);
+})();
+
+function _driveRestoreToken() {
+  try {
+    const t = JSON.parse(localStorage.getItem('fire_drive_token') || 'null');
+    if (t && t.expires > Date.now()) {
+      _driveToken = t.token;
+      _driveUI(true);
+      _drivePull();
+    }
+  } catch(e) {}
+}
+
+function driveConnect() {
+  if (_driveToken) { _drivePull(); return; }
+  if (!_driveReady) { showToast('⏳ Cargando, intenta en un momento'); return; }
+  if (DRIVE_CLIENT_ID === 'PASTE_YOUR_GOOGLE_CLIENT_ID_HERE') {
+    alert('⚙️ Configura tu Google Client ID.\n\n1. Ve a console.cloud.google.com\n2. APIs → Drive API → Habilitar\n3. Credenciales → OAuth 2.0 → Aplicación web\n4. Pega el Client ID en el código (DRIVE_CLIENT_ID)');
+    return;
+  }
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: DRIVE_CLIENT_ID,
+    scope: DRIVE_SCOPE,
+    callback: (resp) => {
+      if (resp.error) { _driveSetStatus('error', resp.error); return; }
+      _driveToken = resp.access_token;
+      localStorage.setItem('fire_drive_token', JSON.stringify({
+        token: _driveToken,
+        expires: Date.now() + (resp.expires_in - 60) * 1000
+      }));
+      _driveUI(true);
+      _driveSetStatus('syncing', 'Conectando…');
+      _drivePull().then(() => _drivePush());
+    }
+  });
+  client.requestAccessToken({ prompt: '' });
+}
+
+function driveDisconnect() {
+  _driveToken = null; _driveFileId = null; _syncPending = false;
+  localStorage.removeItem('fire_drive_token');
+  _driveUI(false);
+}
+
+function _driveUI(connected) {
+  const lbl = document.getElementById('drive-btn-label');
+  const st  = document.getElementById('drive-status');
+  if (lbl) lbl.textContent = connected ? 'Drive conectado ✓' : 'Conectar Drive';
+  if (st)  st.style.display = connected ? 'flex' : 'none';
+  if (!connected) _driveSetStatus('', '');
+}
+
+function _driveSetStatus(state, msg) {
+  const dot  = document.getElementById('drive-dot');
+  const text = document.getElementById('drive-status-text');
+  if (dot)  { dot.className = ''; dot.id = 'drive-dot'; if (state) dot.classList.add(state); }
+  if (text) text.textContent = msg;
+}
+
+async function _driveGetFileId() {
+  if (_driveFileId) return _driveFileId;
+  const r = await fetch(
+    `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name=%27${DRIVE_FILENAME}%27&fields=files(id)`,
+    { headers: { Authorization: 'Bearer ' + _driveToken } }
+  );
+  if (!r.ok) throw new Error('list ' + r.status);
+  const d = await r.json();
+  if (d.files && d.files.length) { _driveFileId = d.files[0].id; return _driveFileId; }
+  // Create new file
+  const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + _driveToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: DRIVE_FILENAME, parents: ['appDataFolder'], mimeType: 'application/json' })
+  });
+  if (!cr.ok) throw new Error('create ' + cr.status);
+  const cj = await cr.json();
+  _driveFileId = cj.id;
+  return _driveFileId;
+}
+
+function _driveBuildPayload() {
+  return JSON.stringify({
+    _v: 2, _ts: Date.now(),
+    _device: config.name || 'Farmacia',
+    products, sales,
+    config: { ...config, logo: null },
+    users,
+    cortes: typeof cortes !== 'undefined' ? cortes : [],
+  });
+}
+
+async function _drivePush() {
+  if (!_driveToken) return;
+  _syncPending = false;
+  _driveSetStatus('syncing', 'Guardando…');
+  try {
+    const fid  = await _driveGetFileId();
+    const body = _driveBuildPayload();
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({ name: DRIVE_FILENAME, mimeType: 'application/json' })], { type: 'application/json' }));
+    form.append('file', new Blob([body], { type: 'application/json' }));
+    const r = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${fid}?uploadType=multipart`,
+      { method: 'PATCH', headers: { Authorization: 'Bearer ' + _driveToken }, body: form }
+    );
+    if (r.status === 401) { driveDisconnect(); return; }
+    if (!r.ok) throw new Error('upload ' + r.status);
+    _lastSyncTs = Date.now();
+    _driveSetStatus('ok', 'Sync ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
+  } catch(e) {
+    console.error('Drive push:', e);
+    _driveSetStatus('error', 'Error al guardar');
+  }
+}
+
+async function _drivePull() {
+  if (!_driveToken) return;
+  _driveSetStatus('syncing', 'Revisando…');
+  try {
+    const fid = await _driveGetFileId();
+    const r   = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fid}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + _driveToken } }
+    );
+    if (r.status === 401) { driveDisconnect(); return; }
+    if (r.status === 404 || r.status === 204) { _driveSetStatus('ok', 'Primera vez'); return; }
+    if (!r.ok) throw new Error('download ' + r.status);
+    const txt = await r.text();
+    if (!txt || txt.length < 5) { _driveSetStatus('ok', 'Sin datos'); return; }
+    const d = JSON.parse(txt);
+    if (!d || !d._ts) { _driveSetStatus('ok', 'Archivo vacío'); return; }
+    _driveMerge(d);
+    _driveSetStatus('ok', 'Sync ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }));
+  } catch(e) {
+    console.error('Drive pull:', e);
+    _driveSetStatus('error', 'Sin conexión');
+  }
+}
+
+function _driveMerge(remote) {
+  let changed = false;
+
+  function mergeById(local, rem) {
+    if (!Array.isArray(rem) || !rem.length) return { arr: local, changed: false };
+    const map = new Map(local.map(x => [String(x.id), x]));
+    let upd = false;
+    rem.forEach(r => {
+      const key = String(r.id);
+      const l = map.get(key);
+      const rTs = r._ts || 0, lTs = l ? (l._ts || 0) : -1;
+      if (!l || rTs > lTs) { map.set(key, r); upd = true; }
+    });
+    return { arr: Array.from(map.values()), changed: upd };
+  }
+
+  // Products
+  const pm = mergeById(products, remote.products);
+  if (pm.changed) { products = pm.arr; save('products', products); changed = true; }
+
+  // Sales — append only (never overwrite)
+  if (Array.isArray(remote.sales) && remote.sales.length) {
+    const have = new Set(sales.map(s => s.id));
+    const fresh = remote.sales.filter(s => !have.has(s.id));
+    if (fresh.length) {
+      sales = [...sales, ...fresh].sort((a, b) =>
+        new Date(b.fecha || b.date || 0) - new Date(a.fecha || a.date || 0)
+      );
+      save('sales', sales); changed = true;
+    }
+  }
+
+  // Config — take remote only if its timestamp is newer
+  if (remote.config && remote._ts > _lastSyncTs) {
+    const localLogo = config.logo;
+    config = { ...config, ...remote.config, logo: localLogo };
+    save('config', config); changed = true;
+  }
+
+  // Users
+  const um = mergeById(users, remote.users || []);
+  if (um.changed) { users = um.arr; save('users', users); changed = true; }
+
+  if (changed) {
+    if (typeof posRenderGrid    === 'function') posRenderGrid();
+    if (typeof renderInventory  === 'function') renderInventory();
+    if (typeof renderSales      === 'function') renderSales();
+    if (typeof renderTodaySales === 'function') renderTodaySales();
+    if (typeof renderReports    === 'function') renderReports();
+    if (typeof fillDeptList     === 'function') fillDeptList();
+    showToast('🔄 Datos sincronizados desde Drive');
+  }
+}
+
+// Hook: intercept save() calls to also push to Drive
+// Use a wrapper that calls localStorage directly to avoid infinite recursion
+const _driveObserveSave = (key, val) => {
+  if (_driveToken && ['products','sales','config','users'].includes(key)) {
+    _syncPending = true;
+    clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(_drivePush, 3000);
+  }
+};
+// Patch: wrap the original save without redefining it
+(function() {
+  const _orig = save;
+  // Override only in this scope so _orig stays as the real function
+  window._fireSave = function(key, val) {
+    localStorage.setItem('fire_' + key, JSON.stringify(val));
+    _driveObserveSave(key, val);
+  };
+})();
+// Replace all save() calls with direct localStorage + drive trigger
+// by patching at the prototype level isn't possible for plain functions,
+// so we directly override the global:
+save = (function() {
+  return function(key, val) {
+    localStorage.setItem('fire_' + key, JSON.stringify(val));
+    _driveObserveSave(key, val);
+  };
+})();
+
+// Poll every 60s
+setInterval(() => {
+  if (_driveToken && !_syncPending && document.visibilityState === 'visible') _drivePull();
+}, 60000);
+
+// Pull on tab focus
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && _driveToken) _drivePull();
+});
+
+</script>
 </body>
 </html>
