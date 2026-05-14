@@ -1214,6 +1214,10 @@ let currentUser = null; // {id, nombre, rol, pass}
 
 // ════════════════════════════ PERSIST ════════════════════════════
 function dbSave(){
+  const now = new Date().toISOString();
+  DB.products.forEach(p => { p.updatedAt = now; });
+  DB.sales.forEach(s    => { if(!s.updatedAt) s.updatedAt = s.fecha || now; });
+  DB.usuarios.forEach(u => { if(!u.updatedAt) u.updatedAt = u.creado || now; });
   localStorage.setItem('fps_db', JSON.stringify(DB));
   localStorage.setItem('fps_ctrs', JSON.stringify({skuN,saleN,cliN,entN,userN}));
   if(typeof GDrive !== 'undefined' && GDrive.saveAndSync) GDrive.saveAndSync();
@@ -3229,21 +3233,83 @@ const GDrive = (() => {
   }
 
   /* ── Sync ── */
+  /* ── Merge helpers ── */
+  // Fusiona dos arrays por id: si existe en ambos, gana el que tenga updatedAt más reciente
+  function mergeById(local, remote) {
+    const map = {};
+    // Primero poner los remotos
+    (remote || []).forEach(r => { map[r.id] = {...r}; });
+    // Luego los locales — si tienen updatedAt más reciente, ganan
+    (local  || []).forEach(l => {
+      if (!map[l.id]) {
+        map[l.id] = {...l}; // nuevo local, agregar
+      } else {
+        const rTs = new Date(map[l.id].updatedAt || map[l.id].fecha || map[l.id].creado || 0).getTime();
+        const lTs = new Date(l.updatedAt || l.fecha || l.creado || 0).getTime();
+        if (lTs >= rTs) map[l.id] = {...l}; // local más reciente gana
+      }
+    });
+    return Object.values(map);
+  }
+
+  function mergeSnaps(local, remote) {
+    return {
+      ts:       Math.max(local.ts, remote.ts || 0),
+      version:  4,
+      products: mergeById(local.products, remote.products),
+      sales:    mergeById(local.sales,    remote.sales),
+      clientes: mergeById(local.clientes, remote.clientes),
+      entradas: mergeById(local.entradas, remote.entradas),
+      usuarios: mergeById(local.usuarios, remote.usuarios),
+      cortes:   mergeById(local.cortes,   remote.cortes),
+      config:   remote.ts > local.ts ? {...local.config, ...remote.config} : local.config,
+      ctrs: {
+        skuN:  Math.max(local.ctrs.skuN,  (remote.ctrs||{}).skuN  || 1),
+        saleN: Math.max(local.ctrs.saleN, (remote.ctrs||{}).saleN || 1),
+        cliN:  Math.max(local.ctrs.cliN,  (remote.ctrs||{}).cliN  || 1),
+        entN:  Math.max(local.ctrs.entN,  (remote.ctrs||{}).entN  || 1),
+        userN: Math.max(local.ctrs.userN, (remote.ctrs||{}).userN || 1),
+      }
+    };
+  }
+
   async function syncNow(dir='both') {
     if (!_enabled || !_token || _busy) return;
     _busy=true; setDot('sync');
     try {
       const local = getSnap();
+
       if (dir==='upload') {
-        await upload(local); setDot('ok');
-      } else {
+        await upload(local);
+        setDot('ok');
+        setModalMsg('✅ Subido: ' + local.products.length + ' prods, ' + local.sales.length + ' ventas');
+
+      } else if (dir==='forceDownload') {
         const remote = await download();
-        if (remote.ts > local.ts + 2000) { applySnap(remote); setDot('ok'); }
-        else { await upload(local); setDot('ok'); }
+        applySnap(remote);
+        setDot('ok');
+        setModalMsg('✅ Descargado: ' + DB.products.length + ' prods, ' + DB.sales.length + ' ventas');
+
+      } else {
+        // MERGE BIDIRECCIONAL — combina local + remoto sin perder datos
+        const remote = await download();
+        const merged = mergeSnaps(local, remote);
+
+        console.log('[GDrive merge] local:', local.products.length, 'p/', local.sales.length,
+          'v | remote:', (remote.products||[]).length, 'p/', (remote.sales||[]).length,
+          'v | merged:', merged.products.length, 'p/', merged.sales.length, 'v');
+
+        // Aplicar el merge localmente
+        applySnap(merged);
+        // Subir el merge a Drive para que el otro dispositivo lo reciba
+        await upload(merged);
+        setDot('ok');
+        setModalMsg('✅ Sync: ' + merged.products.length + ' prods, ' + merged.sales.length + ' ventas');
       }
     } catch(e) {
-      console.warn('[GDrive sync error]', e.message);
+      console.error('[GDrive sync error]', e.message, e);
       setDot('warn');
+      setModalMsg('❌ Error: ' + e.message);
     } finally { _busy=false; }
   }
 
@@ -3975,6 +4041,10 @@ document.getElementById('sc-overlay').addEventListener('click', function(e){
         🔄
       </button>
     </div>
+    <button onclick="GDrive.syncNow('forceDownload')" id="gdrive-force-btn"
+      style="width:100%;margin-top:8px;background:#f97316;color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;display:none;">
+      📥 Forzar descarga desde Drive
+    </button>
     <div id="gdrive-modal-status" style="margin-top:12px;font-size:12px;color:#6b7280;text-align:center;min-height:18px;"></div>
     <p style="font-size:10px;color:#9ca3af;text-align:center;margin-top:14px;margin-bottom:0;">
       Datos guardados en <strong>farmacia-ire-db.json</strong> en tu Google Drive.<br>
@@ -3989,9 +4059,13 @@ function showGDriveModal() {
   modal.style.display = 'flex';
   const s = GDrive.loadSettings();
   document.getElementById('gdrive-client-id-input').value = s.clientId || '';
-  document.getElementById('gdrive-connect-btn').style.display    = GDrive.isEnabled() ? 'none'  : 'flex';
-  document.getElementById('gdrive-disconnect-btn').style.display = GDrive.isEnabled() ? 'flex'  : 'none';
-  document.getElementById('gdrive-modal-status').textContent = GDrive.isEnabled() ? '✅ Conectado a Google Drive' : 'Sin conexión a Google Drive';
+  const connected = GDrive.isEnabled();
+  document.getElementById('gdrive-connect-btn').style.display    = connected ? 'none'  : 'flex';
+  document.getElementById('gdrive-disconnect-btn').style.display = connected ? 'flex'  : 'none';
+  document.getElementById('gdrive-force-btn').style.display      = connected ? 'block' : 'none';
+  document.getElementById('gdrive-modal-status').textContent = connected
+    ? '✅ Conectado — ' + DB.products.length + ' productos locales'
+    : 'Sin conexión a Google Drive';
 }
 async function gdriveConnect() {
   const clientId = document.getElementById('gdrive-client-id-input').value.trim();
