@@ -518,46 +518,6 @@ tbody td{padding:10px 14px;vertical-align:middle}
 }
 
 </style>
-
-<!-- Firebase Sync -->
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyB81SbirFc17VYKc2lHsx_JrMkmxfl-0xY",
-    authDomain: "farmacia-ire-d1c58.firebaseapp.com",
-    projectId: "farmacia-ire-d1c58",
-    storageBucket: "farmacia-ire-d1c58.firebasestorage.app",
-    messagingSenderId: "927395288909",
-    appId: "1:927395288909:web:d4c9523325a2a5c1500904"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db  = getFirestore(app);
-
-  window._fbSaveProducts = async function(products) {
-    try { await setDoc(doc(db, 'farmacia', 'products'), { list: products }); }
-    catch(e) { console.warn('Firebase save products error:', e); }
-  };
-
-  window._fbSaveSales = async function(sales) {
-    try { await setDoc(doc(db, 'farmacia', 'sales'), { list: sales }); }
-    catch(e) { console.warn('Firebase save sales error:', e); }
-  };
-
-  window._fbListen = function(onProducts, onSales) {
-    onSnapshot(doc(db, 'farmacia', 'products'), snap => {
-      if (snap.exists()) onProducts(snap.data().list || []);
-    }, err => console.warn('Firebase products error:', err));
-    onSnapshot(doc(db, 'farmacia', 'sales'), snap => {
-      if (snap.exists()) onSales(snap.data().list || []);
-    }, err => console.warn('Firebase sales error:', err));
-  };
-
-  window._fbReady = true;
-  document.dispatchEvent(new Event('firebase-ready'));
-</script>
 </head>
 <body>
 
@@ -1254,8 +1214,6 @@ let currentUser = null; // {id, nombre, rol, pass}
 function dbSave(){
   localStorage.setItem('fps_db', JSON.stringify(DB));
   localStorage.setItem('fps_ctrs', JSON.stringify({skuN,saleN,cliN,entN,userN}));
-  if (window._fbSaveProducts) window._fbSaveProducts(DB.products);
-  if (window._fbSaveSales)    window._fbSaveSales(DB.sales);
 }
 function dbLoad(){
   try{
@@ -1405,7 +1363,7 @@ function posRenderGrid(){
   const dept=document.getElementById('pos-dept').value;
   const g=document.getElementById('prod-grid');
   let prods=DB.products.filter(p=>{
-    const mq=!q||p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q);
+    const mq=!q||p.nombre.toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q);
     const md=!dept||p.dept===dept;
     return mq&&md;
   });
@@ -1416,28 +1374,28 @@ function posRenderGrid(){
   const ms=DB.config.minStock;
   if(posViewMode==='grid'){
     g.innerHTML=prods.map(p=>{
-      const cls=p.stock===0?'out':p.stock<=(p.min||ms)?'low':'';
-      const stTxt=p.stock===0?'Sin stock':p.stock<=(p.min||ms)?`⚠ ${p.stock}`:`Stock: ${p.stock}`;
-      return `<div class="pcard ${cls}" onclick="${p.stock>0?`posAdd('${p.id}')`:''}" title="${p.name}">
-        <div class="pc-name">${p.name}</div>
+      const cls=p.stock===0?'out':p.stock<=(p.minStock||ms)?'low':'';
+      const stTxt=p.stock===0?'Sin stock':p.stock<=(p.minStock||ms)?`⚠ ${p.stock}`:`Stock: ${p.stock}`;
+      return `<div class="pcard ${cls}" onclick="${p.stock>0?`posAdd('${p.id}')`:''}" title="${p.nombre}">
+        <div class="pc-name">${p.nombre}</div>
         <div class="pc-dept">${p.dept||''}</div>
         <div class="pc-lab">${p.lab||''}</div>
-        <div class="pc-price">${fmt(p.price)}</div>
+        <div class="pc-price">${fmt(p.precio)}</div>
         <div class="pc-stock">${stTxt}</div>
       </div>`;
     }).join('');
   } else {
     // Lista
     g.innerHTML=prods.map(p=>{
-      const cls=p.stock===0?'out':p.stock<=(p.min||ms)?'low':'';
-      const stTxt=p.stock===0?'Sin stock':p.stock<=(p.min||ms)?`⚠ ${p.stock}`:`${p.stock} uds`;
-      return `<div class="pcard ${cls}" onclick="${p.stock>0?`posAdd('${p.id}')`:''}" title="${p.name}${p.desc?' — '+p.desc:''}">
-        <div class="pc-name">${p.name}</div>
+      const cls=p.stock===0?'out':p.stock<=(p.minStock||ms)?'low':'';
+      const stTxt=p.stock===0?'Sin stock':p.stock<=(p.minStock||ms)?`⚠ ${p.stock}`:`${p.stock} uds`;
+      return `<div class="pcard ${cls}" onclick="${p.stock>0?`posAdd('${p.id}')`:''}" title="${p.nombre}${p.desc?' — '+p.desc:''}">
+        <div class="pc-name">${p.nombre}</div>
         <div class="pc-desc">${p.desc||''}</div>
         <div class="pc-dept">${p.dept||'—'}</div>
         <div class="pc-lab">${p.lab||'—'}</div>
         <div class="pc-stock">${stTxt}</div>
-        <div class="pc-price">${fmt(p.price)}</div>
+        <div class="pc-price">${fmt(p.precio)}</div>
       </div>`;
     }).join('');
   }
@@ -1448,11 +1406,11 @@ function posSearch(){
   const q=(document.getElementById('pos-q').value||'').toLowerCase();
   const ac=document.getElementById('pos-ac');
   if(!q){ac.classList.remove('open');return;}
-  const hits=DB.products.filter(p=>p.stock>0&&(p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q))).slice(0,8);
+  const hits=DB.products.filter(p=>p.stock>0&&(p.nombre.toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q))).slice(0,8);
   if(!hits.length){ac.classList.remove('open');return;}
   ac.innerHTML=hits.map(p=>`<div class="ac-item" onclick="posAddFromAc('${p.id}')">
-    <div><div class="ain">${p.name}</div><div class="aim">${p.sku} · ${p.dept||''}</div></div>
-    <div class="aim">${fmt(p.price)} · ${p.stock} uds</div>
+    <div><div class="ain">${p.nombre}</div><div class="aim">${p.codigo} · ${p.dept||''}</div></div>
+    <div class="aim">${fmt(p.precio)} · ${p.stock} uds</div>
   </div>`).join('');
   ac.classList.add('open');
 }
@@ -1466,7 +1424,7 @@ function posKey(e){
   if(e.key==='Enter'){
     const q=e.target.value.trim();
     if(!q) return;
-    const p=DB.products.find(x=>x.barcode===q||x.sku===q);
+    const p=DB.products.find(x=>x.barcode===q||x.codigo===q);
     if(p&&p.stock>0){
       posAdd(p.id);
       e.target.value='';
@@ -1491,15 +1449,15 @@ function posKey(e){
 function posScanResult(p){
   const g=document.getElementById('prod-grid');
   const ms=DB.config.minStock;
-  const stTxt=p.stock===0?'Sin stock':p.stock<=(p.min||ms)?`⚠ ${p.stock}`:`${p.stock} uds`;
+  const stTxt=p.stock===0?'Sin stock':p.stock<=(p.minStock||ms)?`⚠ ${p.stock}`:`${p.stock} uds`;
   // Render only this one product, with green highlight
   g.innerHTML=`<div class="pcard" style="background:#e6f9ee;outline:2.5px solid var(--green);border-radius:var(--r);pointer-events:none">
-    <div class="pc-name" style="font-size:16px">${p.name}</div>
+    <div class="pc-name" style="font-size:16px">${p.nombre}</div>
     <div class="pc-desc">${p.desc||''}</div>
     <div class="pc-dept">${p.dept||'—'}</div>
     <div class="pc-lab">${p.lab||'—'}</div>
     <div class="pc-stock" style="color:var(--green)">${stTxt}</div>
-    <div class="pc-price">${fmt(p.price)}</div>
+    <div class="pc-price">${fmt(p.precio)}</div>
   </div>`;
 }
 function posAddFromAc(id){posAdd(id);document.getElementById('pos-q').value='';document.getElementById('pos-ac').classList.remove('open');posRenderGrid();}
@@ -1509,7 +1467,7 @@ function posAdd(id){
   if(!p||p.stock<=0)return;
   const ex=cart.find(c=>c.id===id);
   if(ex){if(ex.qty>=p.stock){alert('Sin más stock disponible.');return;}ex.qty++;}
-  else cart.push({id,nombre:p.name,precio:parseFloat(p.price),costo:parseFloat(p.cost||0),qty:1});
+  else cart.push({id,nombre:p.nombre,precio:parseFloat(p.precio),costo:parseFloat(p.costo||0),qty:1});
   renderCart();
 }
 function cartRemove(id){cart=cart.filter(c=>c.id!==id);renderCart();}
@@ -1813,9 +1771,9 @@ function invRender(){
   const ms=DB.config.minStock;
   const tbody=document.getElementById('inv-tbody');
   let prods=DB.products.filter(p=>{
-    const mq=!q||p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q);
+    const mq=!q||p.nombre.toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q);
     const md=!dept||p.dept===dept;
-    const minS=p.min||ms;
+    const minS=p.minStock||ms;
     const msok=!sf||(sf==='low'&&p.stock>0&&p.stock<=minS)||(sf==='out'&&p.stock===0);
     return mq&&md&&msok;
   });
@@ -1873,22 +1831,22 @@ function invRender(){
     }
   }
   tbody.innerHTML=prods.map(p=>{
-    const minS=p.min||ms2;
+    const minS=p.minStock||ms2;
     let badge=`<span class="badge bg">OK</span>`;
     if(p.stock===0) badge=`<span class="badge br">Sin stock</span>`;
     else if(p.stock<=minS) badge=`<span class="badge bo">Stock bajo</span>`;
-    const vStr=p.expiry?`<span style="color:${isExpired(p.expiry)?'var(--red)':expiringSoon(p.expiry)?'var(--orange)':'inherit'}">${p.expiry}</span>`:'—';
+    const vStr=p.vence?`<span style="color:${isExpired(p.vence)?'var(--red)':expiringSoon(p.vence)?'var(--orange)':'inherit'}">${p.vence}</span>`:'—';
     return `<tr>
-      <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.barcode||p.sku||'—'}</span></td>
-      <td style="font-weight:700">${p.name}</td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.barcode||p.codigo||'—'}</span></td>
+      <td style="font-weight:700">${p.nombre}</td>
       <td style="font-size:11px;color:var(--text2);font-style:italic;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.desc||'—'}</td>
       <td style="color:var(--text2);font-size:12px">${p.lab||'—'}</td>
       <td><span class="badge bb">${p.dept||'—'}</span></td>
-      <td style="font-family:'JetBrains Mono',monospace">${fmt(p.price)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;color:var(--text2)">${fmt(p.cost||0)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${fmt(p.precio)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--text2)">${fmt(p.costo||0)}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-weight:700">${p.stock}</td>
-      <td style="color:var(--text2)">${p.min||ms2}</td>
-      <td style="color:var(--text2)">${p.max||'—'}</td>
+      <td style="color:var(--text2)">${p.minStock||ms2}</td>
+      <td style="color:var(--text2)">${p.maxStock||'—'}</td>
       <td>${vStr}</td>
       <td>${badge}</td>
       <td>
@@ -1909,9 +1867,9 @@ function openProdModal(id){
   if(id){
     const p=DB.products.find(x=>x.id===id);
     if(!p)return;
-    document.getElementById('p-codigo').value=p.sku||'';
+    document.getElementById('p-codigo').value=p.codigo||'';
     document.getElementById('p-barcode').value=p.barcode||'';
-    document.getElementById('p-nombre').value=p.name||'';
+    document.getElementById('p-nombre').value=p.nombre||'';
     // If dept not in list yet, add it temporarily
     const deptSel=document.getElementById('p-dept');
     if(p.dept&&![...deptSel.options].find(o=>o.value===p.dept)){
@@ -1919,14 +1877,14 @@ function openProdModal(id){
     }
     deptSel.value=p.dept||'';
     document.getElementById('p-lab').value=p.lab||'';
-    document.getElementById('p-precio').value=p.price||'';
-    document.getElementById('p-mayoreo').value=p.pricewholesale||'';
-    document.getElementById('p-costo').value=p.cost||'';
-    document.getElementById('p-unidad').value=p.unit||'Pieza';
+    document.getElementById('p-precio').value=p.precio||'';
+    document.getElementById('p-mayoreo').value=p.mayoreo||'';
+    document.getElementById('p-costo').value=p.costo||'';
+    document.getElementById('p-unidad').value=p.unidad||'Pieza';
     document.getElementById('p-stock').value=p.stock||0;
-    document.getElementById('p-minstock').value=p.min||DB.config.minStock;
-    document.getElementById('p-maxstock').value=p.max||'';
-    document.getElementById('p-vence').value=p.expiry||'';
+    document.getElementById('p-minstock').value=p.minStock||DB.config.minStock;
+    document.getElementById('p-maxstock').value=p.maxStock||'';
+    document.getElementById('p-vence').value=p.vence||'';
     document.getElementById('p-desc').value=p.desc||'';
   } else {
     ['p-codigo','p-barcode','p-nombre','p-lab','p-precio','p-mayoreo','p-costo','p-vence','p-desc'].forEach(i=>document.getElementById(i).value='');
@@ -1943,19 +1901,19 @@ function saveProd(){
   if(!nom){alert('El nombre es obligatorio.');return;}
   const editId=document.getElementById('p-id').value;
   const data={
-    name:nom,
-    sku:document.getElementById('p-codigo').value.trim()||('SKU-'+String(skuN).padStart(4,'0')),
+    nombre:nom,
+    codigo:document.getElementById('p-codigo').value.trim()||('SKU-'+String(skuN).padStart(4,'0')),
     barcode:document.getElementById('p-barcode').value.trim(),
     dept:document.getElementById('p-dept').value.trim(),
     lab:document.getElementById('p-lab').value.trim(),
-    price:parseFloat(document.getElementById('p-precio').value)||0,
-    pricewholesale:parseFloat(document.getElementById('p-mayoreo').value)||0,
-    cost:parseFloat(document.getElementById('p-costo').value)||0,
-    unit:document.getElementById('p-unidad').value,
+    precio:parseFloat(document.getElementById('p-precio').value)||0,
+    mayoreo:parseFloat(document.getElementById('p-mayoreo').value)||0,
+    costo:parseFloat(document.getElementById('p-costo').value)||0,
+    unidad:document.getElementById('p-unidad').value,
     stock:parseInt(document.getElementById('p-stock').value)||0,
-    min:parseInt(document.getElementById('p-minstock').value)||DB.config.minStock,
-    max:parseInt(document.getElementById('p-maxstock').value)||0,
-    expiry:document.getElementById('p-vence').value,
+    minStock:parseInt(document.getElementById('p-minstock').value)||DB.config.minStock,
+    maxStock:parseInt(document.getElementById('p-maxstock').value)||0,
+    vence:document.getElementById('p-vence').value,
     desc:document.getElementById('p-desc').value.trim(),
   };
   if(editId){
@@ -1982,13 +1940,13 @@ function delProd(id){
 function exportInvExcel(){
   if(typeof XLSX==='undefined'){alert('XLSX no disponible, usa CSV.');return;}
   const rows=DB.products.map(p=>({
-    Código:p.sku,'Cód. Barras':p.barcode||'',Nombre:p.name,
+    Código:p.codigo,'Cód. Barras':p.barcode||'',Nombre:p.nombre,
     'Descripción':p.desc||'',
     Departamento:p.dept||'',Laboratorio:p.lab||'',
-    'Precio Venta':p.price,'Precio Mayoreo':p.pricewholesale||0,Costo:p.cost||0,
-    Ganancia:(p.price-(p.cost||0)).toFixed(2),'Stock Actual':p.stock,'Stock Mín':p.min||DB.config.minStock,
-    'Stock Máx':p.max||'',Unidad:p.unit||'',Vencimiento:p.expiry||'',
-    Estado:p.stock===0?'Sin Stock':p.stock<=(p.min||DB.config.minStock)?'Stock Bajo':'OK'
+    'Precio Venta':p.precio,'Precio Mayoreo':p.mayoreo||0,Costo:p.costo||0,
+    Ganancia:(p.precio-(p.costo||0)).toFixed(2),'Stock Actual':p.stock,'Stock Mín':p.minStock||DB.config.minStock,
+    'Stock Máx':p.maxStock||'',Unidad:p.unidad||'',Vencimiento:p.vence||'',
+    Estado:p.stock===0?'Sin Stock':p.stock<=(p.minStock||DB.config.minStock)?'Stock Bajo':'OK'
   }));
   const ws=XLSX.utils.json_to_sheet(rows);
   const wb=XLSX.utils.book_new();
@@ -1998,9 +1956,9 @@ function exportInvExcel(){
 function exportInvCSV(){
   const h=['Código','Cód. Barras','Nombre','Descripción','Departamento','Laboratorio','Precio Venta','Costo','Stock Actual','Stock Mín','Unidad','Vencimiento','Estado'];
   const rows=DB.products.map(p=>[
-    p.sku,p.barcode||'',p.name,p.desc||'',p.dept||'',p.lab||'',
-    p.price.toFixed(2),(p.cost||0).toFixed(2),p.stock,p.min||DB.config.minStock,p.unit||'',p.expiry||'',
-    p.stock===0?'Sin Stock':p.stock<=(p.min||DB.config.minStock)?'Stock Bajo':'OK'
+    p.codigo,p.barcode||'',p.nombre,p.desc||'',p.dept||'',p.lab||'',
+    p.precio.toFixed(2),(p.costo||0).toFixed(2),p.stock,p.minStock||DB.config.minStock,p.unidad||'',p.vence||'',
+    p.stock===0?'Sin Stock':p.stock<=(p.minStock||DB.config.minStock)?'Stock Bajo':'OK'
   ].map(v=>`"${String(v).replace(/"/g,'""')}"`));
   const csv=[h.join(','),...rows.map(r=>r.join(','))].join('\r\n');
   dlBlob('\uFEFF'+csv,'text/csv',`Inventario_${DB.config.nombre.replace(/\s/g,'_')}_${today()}.csv`);
@@ -2011,7 +1969,7 @@ function exportInvFiltrado(tipo){
   const ms=DB.config.minStock;
   let prods, label;
   if(tipo==='low'){
-    prods=DB.products.filter(p=>p.stock>0&&p.stock<=(p.min||ms));
+    prods=DB.products.filter(p=>p.stock>0&&p.stock<=(p.minStock||ms));
     label='Stock_Bajo';
   } else {
     prods=DB.products.filter(p=>p.stock===0);
@@ -2022,11 +1980,11 @@ function exportInvFiltrado(tipo){
     return;
   }
   const rows=prods.map(p=>({
-    Código:p.sku,'Cód. Barras':p.barcode||'',Nombre:p.name,
+    Código:p.codigo,'Cód. Barras':p.barcode||'',Nombre:p.nombre,
     Descripción:p.desc||'',Departamento:p.dept||'',Laboratorio:p.lab||'',
-    'Precio Venta':p.price,Costo:p.cost||0,
-    'Stock Actual':p.stock,'Stock Mín':p.min||ms,'Stock Máx':p.max||'',
-    Unidad:p.unit||'',Vencimiento:p.expiry||'',
+    'Precio Venta':p.precio,Costo:p.costo||0,
+    'Stock Actual':p.stock,'Stock Mín':p.minStock||ms,'Stock Máx':p.maxStock||'',
+    Unidad:p.unidad||'',Vencimiento:p.vence||'',
     Estado:p.stock===0?'Sin Stock':'Stock Bajo'
   }));
   const ws=XLSX.utils.json_to_sheet(rows);
@@ -2143,7 +2101,7 @@ function renderReportes(){
   document.getElementById('r-tarjeta').textContent=fmt(tarjeta);
   const ms=DB.config.minStock;
   document.getElementById('r-prods').textContent=DB.products.length;
-  document.getElementById('r-low').textContent=DB.products.filter(p=>p.stock>0&&p.stock<=(p.min||ms)).length;
+  document.getElementById('r-low').textContent=DB.products.filter(p=>p.stock>0&&p.stock<=(p.minStock||ms)).length;
 
   // Pago breakdown
   const pr=document.getElementById('r-pago-rows');
@@ -2227,7 +2185,7 @@ function renderReportes(){
   }
   rtb.innerHTML=top.map((p,i)=>`<tr>
     <td style="font-weight:800;color:var(--accent)">${i+1}</td>
-    <td style="font-weight:700">${p.name}</td>
+    <td style="font-weight:700">${p.nombre}</td>
     <td style="font-family:'JetBrains Mono',monospace">${p.qty}</td>
     <td style="font-family:'JetBrains Mono',monospace;color:var(--green)">${fmt(p.rev)}</td>
   </tr>`).join('');
@@ -2570,7 +2528,7 @@ function abrirCorte(){
     listEl.innerHTML = top.map((p,i)=>`
       <div class="corte-item-row">
         <span style="color:var(--accent);font-weight:800;width:20px">${i+1}</span>
-        <span style="flex:1;font-weight:600;padding:0 8px">${p.name}</span>
+        <span style="flex:1;font-weight:600;padding:0 8px">${p.nombre}</span>
         <span style="color:var(--text2);width:50px;text-align:center">${p.qty} uds</span>
         <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--green);width:72px;text-align:right">${fmt(p.total)}</span>
       </div>`).join('');
@@ -2735,8 +2693,8 @@ function cqRender(){
   // Search across name, desc, lab, dept, barcode, codigo
   const results = DB.products.filter(p=>{
     const haystack = [
-      p.name||'', p.desc||'', p.lab||'', p.dept||'',
-      p.barcode||'', p.sku||''
+      p.nombre||'', p.desc||'', p.lab||'', p.dept||'',
+      p.barcode||'', p.codigo||''
     ].join(' ').toLowerCase();
     // Support multiple words: all must match
     return q.split(/\s+/).every(word => haystack.includes(word));
@@ -2769,7 +2727,7 @@ function cqRender(){
   }
 
   function stockBadge(p){
-    const minS = p.min||ms;
+    const minS = p.minStock||ms;
     if(p.stock===0) return '<span class="badge br">Sin stock</span>';
     if(p.stock<=minS) return '<span class="badge bo">Stock bajo</span>';
     return '<span class="badge bg">OK</span>';
@@ -2781,7 +2739,7 @@ function cqRender(){
 
         <!-- Left: name + badges -->
         <div style="flex:1;min-width:200px">
-          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">${highlight(p.name,q)}</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">${highlight(p.nombre,q)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
             ${p.dept?`<span class="badge bb">${p.dept}</span>`:''}
             ${p.lab?`<span class="badge bgr">${p.lab}</span>`:''}
@@ -2792,15 +2750,15 @@ function cqRender(){
 
         <!-- Right: data grid -->
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;min-width:280px">
-          ${cqDataBox('Precio venta', fmt(p.price), 'sv-blue')}
+          ${cqDataBox('Precio venta', fmt(p.precio), 'sv-blue')}
           ${p.barcode?cqDataBox('Cód. barras', p.barcode, ''):''}
-          ${p.expiry?cqDataBox('Vencimiento', p.expiry, isExpired(p.expiry)?'sv-red':expiringSoon(p.expiry)?'sv-orange':''):''}
+          ${p.vence?cqDataBox('Vencimiento', p.vence, isExpired(p.vence)?'sv-red':expiringSoon(p.vence)?'sv-orange':''):''}
         </div>
       </div>
 
       <!-- Footer: actions -->
       <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-        <button class="btn btn-outline btn-sm" onclick="nav('inv');setTimeout(()=>{document.getElementById('inv-q').value='${p.name.replace(/'/g,"\'")}';invRender();},100)">📦 Ver en inventario</button>
+        <button class="btn btn-outline btn-sm" onclick="nav('inv');setTimeout(()=>{document.getElementById('inv-q').value='${p.nombre.replace(/'/g,"\'")}';invRender();},100)">📦 Ver en inventario</button>
         ${p.stock>0?`<button class="btn btn-primary btn-sm" onclick="posAdd('${p.id}');nav('pos')">🛒 Agregar al ticket</button>`:''}
         ${p.stock>0?`<button class="cq-al-ticket-btn" id="cq-btn-${p.id}" onclick="cqAddToTicket('${p.id}')">➕ Al ticket</button>`:`<button class="cq-al-ticket-btn" disabled>Sin stock</button>`}
       </div>
@@ -2859,7 +2817,7 @@ function openImportModal(){
 
 // Column name aliases -> internal field
 const COL_MAP = {
-  'nombre':'name','name':'name','producto':'name',
+  'nombre':'nombre','name':'nombre','producto':'nombre',
   'codigo':'codigo','sku':'codigo','cod':'codigo','código':'codigo','cód':'codigo','código interno':'codigo','codigo interno':'codigo',
   'barcode':'barcode','codigo de barras':'barcode','código de barras':'barcode','cod barras':'barcode',
   'cód. barras':'barcode','cod. barras':'barcode','cód barras':'barcode','c.barras':'barcode',
@@ -2913,7 +2871,7 @@ function previewImportExcel(e){
         });
 
         // Validate
-        const nombre = String(prod.name||'').trim();
+        const nombre = String(prod.nombre||'').trim();
         if(!nombre){
           errCount++;
           rowsHtml.push('<tr><td><span class="badge br">Error</span></td><td colspan="6" style="color:var(--red);font-size:11px">Sin nombre</td></tr>');
@@ -2933,25 +2891,25 @@ function previewImportExcel(e){
         }
 
         const entry = {
-          name: nombre,
-          sku: String(prod.codigo||'').trim(),
+          nombre: nombre,
+          codigo: String(prod.codigo||'').trim(),
           barcode: String(prod.barcode||'').trim(),
           dept: String(prod.dept||'').trim(),
           lab: String(prod.lab||'').trim(),
-          price: num(prod.price),
-          cost: num(prod.cost),
-          pricewholesale: num(prod.pricewholesale),
+          precio: num(prod.precio),
+          costo: num(prod.costo),
+          mayoreo: num(prod.mayoreo),
           stock: (prod.stock!==undefined && prod.stock!=='') ? (parseInt(String(prod.stock).replace(/[^0-9-]/g,''))||0) : null,
           // null = column absent from Excel; any number (incl. 0) = use it
-          min: parseInt(String(prod.min||'0'))||DB.config.minStock,
-          max: parseInt(String(prod.max||'0'))||0,
-          unit: String(prod.unit||'Pieza').trim(),
-          expiry: toDateStr(prod.expiry),
+          minStock: parseInt(String(prod.minStock||'0'))||DB.config.minStock,
+          maxStock: parseInt(String(prod.maxStock||'0'))||0,
+          unidad: String(prod.unidad||'Pieza').trim(),
+          vence: toDateStr(prod.vence),
           desc: String(prod.desc||'').trim(),
           descEnExcel: prod.desc!==undefined, // flag: column was present
         };
 
-        const existing = DB.products.find(function(p){ return p.name.toLowerCase()===nombre.toLowerCase(); });
+        const existing = DB.products.find(function(p){ return p.nombre.toLowerCase()===nombre.toLowerCase(); });
         const isNew = !existing;
         if(isNew) newCount++; else updCount++;
 
@@ -3058,34 +3016,6 @@ function confirmImportExcel(){
   }catch(e){ console.error('migrateV3 error:',e); }
 })();
 dbLoad();
-
-function _initFirebaseListeners() {
-  if (!window._fbListen) return;
-  window._fbListen(
-    function(lista) {
-      if (JSON.stringify(lista) === JSON.stringify(DB.products)) return;
-      DB.products = lista;
-      localStorage.setItem('fps_db', JSON.stringify(DB));
-      invRender();
-      posRenderGrid();
-      refreshDeptFilters();
-    },
-    function(lista) {
-      if (JSON.stringify(lista) === JSON.stringify(DB.sales)) return;
-      DB.sales = lista;
-      localStorage.setItem('fps_db', JSON.stringify(DB));
-      renderTodaySalesList();
-      if (typeof vtRender === 'function') vtRender();
-    }
-  );
-}
-
-if (window._fbReady) {
-  _initFirebaseListeners();
-} else {
-  document.addEventListener('firebase-ready', _initFirebaseListeners, { once: true });
-}
-
 applyBranding();
 refreshDeptFilters();
 posRenderGrid();
@@ -3158,7 +3088,7 @@ function cqAddToTicket(pid) {
     setTimeout(function(){ btn.textContent = '➕ Al ticket'; }, 1500);
   }
   const t = document.getElementById('toast');
-  if (t) { t.textContent = '✅ ' + p.name + ' agregado al ticket'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
+  if (t) { t.textContent = '✅ ' + p.nombre + ' agregado al ticket'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
 }
 
 // ───── Inventory Context Menu ─────
@@ -3191,13 +3121,13 @@ function invCtxAddStock() {
   if (m) m.classList.remove('open');
   const prod = DB.products.find(function(p){ return p.id === _invCtxId; });
   if (!prod) return;
-  const qty = prompt('¿Cuántas unidades agregar a "' + prod.name + '"? (stock actual: ' + prod.stock + ')');
+  const qty = prompt('¿Cuántas unidades agregar a "' + prod.nombre + '"? (stock actual: ' + prod.stock + ')');
   if (!qty || isNaN(qty)) return;
   prod.stock += parseInt(qty);
   dbSave();
   invRender();
   const t = document.getElementById('toast');
-  if (t) { t.textContent = '📦 +' + qty + ' unidades a ' + prod.name; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
+  if (t) { t.textContent = '📦 +' + qty + ' unidades a ' + prod.nombre; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
 }
 
 function invCtxHistory() {
@@ -3208,7 +3138,7 @@ function invCtxHistory() {
   const info = related.length
     ? related.map(function(s){ return s.id + ' · ' + new Date(s.fecha).toLocaleDateString('es-MX') + ' · -' + s.items.find(function(i){return i.id===_invCtxId;}).qty + ' uds'; }).join('\n')
     : 'Sin movimientos registrados';
-  alert('Movimientos de ' + (prod ? prod.name : 'producto') + ':\n\n' + info);
+  alert('Movimientos de ' + (prod ? prod.nombre : 'producto') + ':\n\n' + info);
 }
 
 function invCtxDelete() {
@@ -3219,18 +3149,18 @@ function invCtxDelete() {
 
 // ───── SKU automático ─────
 function genSKU(p) {
-  if (p.sku) return p.sku;
+  if (p.codigo) return p.codigo;
   const prefix = (p.dept||'GEN').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z]/g,'').substring(0,3).padEnd(3,'X');
   const seq = String(DB.products.indexOf(p) + 1).padStart(4,'0');
-  p.sku = prefix + '-' + seq;
-  return p.sku;
+  p.codigo = prefix + '-' + seq;
+  return p.codigo;
 }
 
 function assignSKUs() {
   DB.products.forEach(function(p, i) {
-    if (!p.sku) {
+    if (!p.codigo) {
       const prefix = (p.dept||'GEN').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z]/g,'').substring(0,3).padEnd(3,'X');
-      p.sku = prefix + '-' + String(i+1).padStart(4,'0');
+      p.codigo = prefix + '-' + String(i+1).padStart(4,'0');
     }
   });
   dbSave();
