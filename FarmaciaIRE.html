@@ -600,7 +600,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
             <button class="sc-btn" onclick="scOpen('pos')" title="Escanear" style="position:absolute;right:4px;top:50%;transform:translateY(-50%);border:none;width:32px;height:32px;">📷</button>
             <div class="ac-drop" id="pos-ac"></div>
           </div>
-          <select id="pos-dept" onchange="renderInventory()">
+          <select id="pos-dept" onchange="posRenderGrid()">
             <option value="">Todos los deptos.</option>
           </select>
           <div class="view-toggle">
@@ -1262,7 +1262,7 @@ function navigate(p){
   btns.find(b=>b.querySelector('.icon')?.textContent===icons[p])?.classList.add('active');
   if(p==='inv'){fillDeptList();renderInventory();setTimeout(()=>document.getElementById('inv-q')?.focus(),80);}
   if(p==='consulta'){setTimeout(()=>document.getElementById('cq-input')?.focus(),80);consultaSearch();}
-  if(p==='pos'){fillDeptList();renderInventory();setTimeout(()=>document.getElementById('pos-q')?.focus(),80);}
+  if(p==='pos'){fillDeptList();posRenderGrid();setTimeout(()=>document.getElementById('pos-q')?.focus(),80);}
   if(p==='ventas'){renderSales();vtSetDates();}
   if(p==='reportes'){renderReports();}
   if(p==='config'){loadConfig();}
@@ -1343,7 +1343,7 @@ function setPosView(mode){
     if(hdr) hdr.classList.remove('hidden');
     btnList.classList.add('active'); btnGrid.classList.remove('active');
   }
-  renderInventory();
+  posRenderGrid();
 }
 
 function posRenderGrid(){
@@ -1390,7 +1390,7 @@ function posRenderGrid(){
 }
 
 function searchProducts(){
-  renderInventory();
+  posRenderGrid();
   const q=(document.getElementById('pos-q').value||'').toLowerCase();
   const ac=document.getElementById('pos-ac');
   if(!q){ac.classList.remove('open');return;}
@@ -1405,7 +1405,7 @@ function searchProducts(){
 function posRestoreGrid(){
   // Only restore if showing a scan result (single item), not a typed search
   const q=document.getElementById('pos-q').value||'';
-  if(!q) renderInventory();
+  if(!q) posRenderGrid();
 }
 
 function posKey(e){
@@ -1430,7 +1430,7 @@ function posKey(e){
   }
   if(e.key==='Escape'){
     document.getElementById('pos-ac').classList.remove('open');
-    renderInventory(); // restore full list on Escape
+    posRenderGrid(); // restore full list on Escape
   }
 }
 
@@ -1638,7 +1638,7 @@ function confirmedSale(){
   clearCart();
   document.getElementById('pago-recibido').value='';
   document.getElementById('cambio-box').classList.remove('vis');
-  renderInventory();
+  posRenderGrid();
 }
 
 // ════════════════════════════ TICKET ════════════════════════════
@@ -1911,9 +1911,9 @@ function saveProduct(){
   }
   save('products', products);
   closeModal('m-prod');
-  renderInventory();
   fillDeptList();
   renderInventory();
+  posRenderGrid();
 }
 function ctxDelete(id){
   if(!confirm('¿Eliminar este producto?'))return;
@@ -2379,7 +2379,6 @@ function enterApp(user){
   // Ir a POS e inicializar vistas
   navigate('pos');
   assignSKUs();
-  renderInventory();
   renderSales();
   renderUsers();
   renderReports();
@@ -2968,9 +2967,9 @@ function confirmImportExcel(){
   });
   save('products', products);
   closeModal('m-import');
-  renderInventory();
   fillDeptList();
   renderInventory();
+  posRenderGrid();
   importRows = [];
   alert('✅ Importación completa: ' + newCount + ' producto(s) nuevo(s), ' + updCount + ' actualizado(s).');
 }
@@ -2991,7 +2990,7 @@ function confirmImportExcel(){
 // Boot sequence (data already loaded via load() at declarations above)
 applyLogo();
 fillDeptList();
-renderInventory();
+posRenderGrid();
 updateCartTotals();
 vtSetDates();
 renderUserList();
