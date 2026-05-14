@@ -518,6 +518,44 @@ tbody td{padding:10px 14px;vertical-align:middle}
 }
 
 </style>
+
+<!-- Firebase Sync -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyB81SbirFc17VYKc2lHsx_JrMkmxfl-0xY",
+    authDomain: "farmacia-ire-d1c58.firebaseapp.com",
+    projectId: "farmacia-ire-d1c58",
+    storageBucket: "farmacia-ire-d1c58.firebasestorage.app",
+    messagingSenderId: "927395288909",
+    appId: "1:927395288909:web:d4c9523325a2a5c1500904"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  window._fbSave = async function(products, sales) {
+    try {
+      await setDoc(doc(db, 'farmacia', 'products'), { list: products });
+      await setDoc(doc(db, 'farmacia', 'sales'),    { list: sales });
+    } catch(e) { console.warn('Firebase save error:', e); }
+  };
+
+  window._fbListen = function(onProducts, onSales) {
+    onSnapshot(doc(db, 'farmacia', 'products'), snap => {
+      if (snap.exists()) onProducts(snap.data().list || []);
+    }, err => console.warn('Firebase products error:', err));
+
+    onSnapshot(doc(db, 'farmacia', 'sales'), snap => {
+      if (snap.exists()) onSales(snap.data().list || []);
+    }, err => console.warn('Firebase sales error:', err));
+  };
+
+  window._fbReady = true;
+  document.dispatchEvent(new Event('firebase-ready'));
+</script>
 </head>
 <body>
 
@@ -1214,6 +1252,10 @@ let currentUser = null; // {id, nombre, rol, pass}
 function dbSave(){
   localStorage.setItem('fps_db', JSON.stringify(DB));
   localStorage.setItem('fps_ctrs', JSON.stringify({skuN,saleN,cliN,entN,userN}));
+  // Sincronizar productos y ventas a Firebase
+  if (window._fbSave) {
+    window._fbSave(DB.products, DB.sales);
+  }
 }
 function dbLoad(){
   try{
@@ -3016,6 +3058,34 @@ function confirmImportExcel(){
   }catch(e){ console.error('migrateV3 error:',e); }
 })();
 dbLoad();
+
+// Suscribirse a cambios en Firebase en tiempo real
+function _initFirebaseListeners() {
+  if (!window._fbListen) return;
+  window._fbListen(
+    function(lista) { // productos
+      if (JSON.stringify(lista) === JSON.stringify(DB.products)) return;
+      DB.products = lista;
+      localStorage.setItem('fps_db', JSON.stringify(DB));
+      posRenderGrid();
+      if (typeof renderInventario === 'function') renderInventario();
+    },
+    function(lista) { // ventas
+      if (JSON.stringify(lista) === JSON.stringify(DB.sales)) return;
+      DB.sales = lista;
+      localStorage.setItem('fps_db', JSON.stringify(DB));
+      renderTodaySalesList();
+      if (typeof vtRender === 'function') vtRender();
+    }
+  );
+}
+
+if (window._fbReady) {
+  _initFirebaseListeners();
+} else {
+  document.addEventListener('firebase-ready', _initFirebaseListeners, { once: true });
+}
+
 applyBranding();
 refreshDeptFilters();
 posRenderGrid();
