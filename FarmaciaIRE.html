@@ -892,7 +892,17 @@ body {
   .pos-right-col { display: none !important; }
   .pos-left-col { display: block !important; }
   /* Restore single-column POS on mobile */
-  #page-pos { display: block !important; }
+  #page-pos.active { display: block !important; }
+  /* Hide iPad-only search bar, show mobile button */
+  #ipad-search-bar { display: none !important; }
+  #mobile-cart-btn { display: flex !important; }
+  #mobile-manual-btn { display: flex !important; }
+}
+
+@media (min-width: 768px) {
+  /* Hide mobile-only elements on iPad */
+  #mobile-search-btn-wrap { display: none !important; }
+  #mobile-cart-row { display: none !important; }
 }
 
 /* ========================================
@@ -967,8 +977,8 @@ body {
   .nav-item .nav-icon { font-size: 20px; width: 26px; }
   .nav-section-label { font-size: 11px; padding: 14px 22px 7px; }
 
-  /* POS page: two-column layout on iPad */
-  #page-pos {
+  /* POS page: two-column layout on iPad - only when active */
+  #page-pos.active {
     display: grid;
     grid-template-columns: 1fr 420px;
     gap: 24px;
@@ -1160,18 +1170,39 @@ body {
 
       <!-- ===== POS PAGE ===== -->
       <div class="page active" id="page-pos">
-        <!-- Left column: search + today's sales -->
+        <!-- Left column: inline product search + list -->
         <div class="pos-left-col">
-          <div class="pos-search-btn" onclick="openProductSearch()">
-            <div class="big-icon">📱</div>
-            <h3>Buscar Producto</h3>
-            <p>Toca aquí para buscar por código de barras o nombre</p>
+
+          <!-- Inline search bar (iPad) / search button fallback (mobile) -->
+          <div id="ipad-search-bar" style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 20px">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">
+              <div style="position:relative;flex:1">
+                <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text3)">🔍</span>
+                <input class="input-field" id="ipad-pos-search" placeholder="Buscar producto por nombre o código..." oninput="ipadPosSearch(this.value)" style="padding-left:40px;padding-right:40px;font-size:15px;width:100%">
+                <button onclick="openScanner('ipad-pos-search', function(v){ ipadPosSearch(v); })" class="cam-btn" title="Escanear">📷</button>
+              </div>
+              <button onclick="openManualProduct()" title="Agregar manual" style="background:var(--card);color:var(--text);border:2px solid var(--border);border-radius:10px;padding:10px 14px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">✏️ Manual</button>
+            </div>
+            <!-- Product results list -->
+            <div id="ipad-pos-results" style="max-height:420px;overflow-y:auto">
+              <div class="empty-state" style="padding:32px 20px"><div class="empty-icon">🔎</div><p>Escribe para buscar productos</p></div>
+            </div>
           </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
+
+          <!-- Mobile fallback: big search button -->
+          <div id="mobile-search-btn-wrap">
+            <div class="pos-search-btn" onclick="openProductSearch()">
+              <div class="big-icon">📱</div>
+              <h3>Buscar Producto</h3>
+              <p>Toca aquí para buscar por código de barras o nombre</p>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap" id="mobile-cart-row">
             <button onclick="openCart()" id="mobile-cart-btn" style="background:var(--accent);color:#fff;border:none;border-radius:10px;padding:12px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">
               🛒 Ver Carrito (<span id="cart-count">0</span>)
             </button>
-            <button onclick="openManualProduct()" style="background:var(--card);color:var(--text);border:2px solid var(--border);border-radius:10px;padding:12px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">
+            <button onclick="openManualProduct()" id="mobile-manual-btn" style="background:var(--card);color:var(--text);border:2px solid var(--border);border-radius:10px;padding:12px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px">
               ✏️ Agregar Manual
             </button>
           </div>
@@ -1187,7 +1218,7 @@ body {
 
         <!-- Right column: inline cart panel (iPad only) -->
         <div class="pos-right-col">
-          <div id="ipad-cart-panel" style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;position:sticky;top:0">
+          <div id="ipad-cart-panel" style="background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;position:sticky;top:0;max-height:calc(100vh - 100px);overflow-y:auto">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
               <h3 style="font-size:17px;font-weight:800;color:var(--text)">🛒 Carrito</h3>
               <span id="ipad-cart-count-badge" style="background:var(--accent);color:#fff;border-radius:20px;padding:3px 12px;font-size:13px;font-weight:700">0 items</span>
@@ -3815,6 +3846,71 @@ function calcIpadChange() {
     disp.classList.toggle('show', recv > 0);
     amt.textContent = '$' + Math.max(0, change).toFixed(2);
   }
+}
+
+// ===== IPAD INLINE POS PRODUCT SEARCH =====
+function ipadPosSearch(query) {
+  const resultsEl = document.getElementById('ipad-pos-results');
+  if (!resultsEl) return;
+  const q = (query || '').toLowerCase().trim();
+  if (!q) {
+    resultsEl.innerHTML = '<div class="empty-state" style="padding:32px 20px"><div class="empty-icon">🔎</div><p>Escribe para buscar productos</p></div>';
+    return;
+  }
+  const all = DB.products || [];
+  const matches = all.filter(p =>
+    (p.name || '').toLowerCase().includes(q) ||
+    (p.code || '').toLowerCase().includes(q) ||
+    (p.barcode || '').toLowerCase().includes(q)
+  ).slice(0, 40);
+
+  if (!matches.length) {
+    resultsEl.innerHTML = '<div class="empty-state" style="padding:32px 20px"><div class="empty-icon">😔</div><p>Sin resultados para "<strong>' + query + '</strong>"</p></div>';
+    return;
+  }
+
+  const cfg = DB.config || {};
+  const currency = cfg.currency === 'USD' ? 'USD $' : 'MXN $';
+  let html = '';
+  matches.forEach(p => {
+    const inStock = (p.stock || 0) > 0;
+    const stockColor = inStock ? 'var(--green)' : 'var(--red)';
+    const stockLabel = inStock ? p.stock + ' ' + (p.unit || 'pza') : 'Sin stock';
+    html += `<div class="product-row" onclick="ipadAddToCart('${p.id || p.code}')" style="opacity:${inStock ? 1 : 0.55}">
+      <div class="product-row-info">
+        <div class="product-row-name">${p.name}</div>
+        <div class="product-row-code">${p.barcode || p.code || ''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="product-row-price">$${parseFloat(p.price || 0).toFixed(2)}</div>
+        <div style="font-size:11px;color:${stockColor};font-weight:700">${stockLabel}</div>
+      </div>
+      <button class="add-btn" onclick="event.stopPropagation();ipadAddToCart('${p.id || p.code}')" ${!inStock ? 'disabled style="opacity:.4;cursor:default"' : ''}>+</button>
+    </div>`;
+  });
+  resultsEl.innerHTML = html;
+}
+
+function ipadAddToCart(pid) {
+  const prod = (DB.products || []).find(p => (p.id || p.code) == pid);
+  if (!prod) return;
+  if ((prod.stock || 0) <= 0) { showToast('⚠️ Sin stock'); return; }
+  const existing = cart.find(c => c.id == pid);
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({ id: pid, name: prod.name, price: parseFloat(prod.price || 0), qty: 1 });
+  }
+  updateCartBadge();
+  // Brief flash on the row
+  const rows = document.querySelectorAll('#ipad-pos-results .product-row');
+  rows.forEach(r => {
+    if (r.getAttribute('onclick') && r.getAttribute('onclick').includes(pid)) {
+      r.style.background = '#eef4ff';
+      setTimeout(() => r.style.background = '', 300);
+    }
+  });
+  showToast('✅ ' + prod.name + ' agregado');
 }
 
 </script>
