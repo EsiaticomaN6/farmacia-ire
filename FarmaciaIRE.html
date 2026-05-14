@@ -536,18 +536,20 @@ tbody td{padding:10px 14px;vertical-align:middle}
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
 
-  window._fbSave = async function(products, sales) {
-    try {
-      await setDoc(doc(db, 'farmacia', 'products'), { list: products });
-      await setDoc(doc(db, 'farmacia', 'sales'),    { list: sales });
-    } catch(e) { console.warn('Firebase save error:', e); }
+  window._fbSaveProducts = async function(products) {
+    try { await setDoc(doc(db, 'farmacia', 'products'), { list: products }); }
+    catch(e) { console.warn('Firebase save products error:', e); }
+  };
+
+  window._fbSaveSales = async function(sales) {
+    try { await setDoc(doc(db, 'farmacia', 'sales'), { list: sales }); }
+    catch(e) { console.warn('Firebase save sales error:', e); }
   };
 
   window._fbListen = function(onProducts, onSales) {
     onSnapshot(doc(db, 'farmacia', 'products'), snap => {
       if (snap.exists()) onProducts(snap.data().list || []);
     }, err => console.warn('Firebase products error:', err));
-
     onSnapshot(doc(db, 'farmacia', 'sales'), snap => {
       if (snap.exists()) onSales(snap.data().list || []);
     }, err => console.warn('Firebase sales error:', err));
@@ -1238,9 +1240,9 @@ tbody td{padding:10px 14px;vertical-align:middle}
 <script>
 // ════════════════════════════ STATE ════════════════════════════
 let DB = { products:[], sales:[], clientes:[], entradas:[], usuarios:[], cortes:[], config:{
-  nombre:'Farmacia IRE', tel:'', dir:'', rfc:'', email:'',
+  name:'Farmacia IRE', tel:'', dir:'', rfc:'', email:'',
   leyenda:'¡Gracias por su preferencia!',
-  cajero:'Administrador', iva:16, minStock:5, moneda:'$', logo:null
+  cajero:'Administrador', iva:16, min:5, moneda:'$', logo:null
 }};
 let cart = [];
 let pagoPref = 'efectivo';
@@ -1252,10 +1254,8 @@ let currentUser = null; // {id, nombre, rol, pass}
 function dbSave(){
   localStorage.setItem('fps_db', JSON.stringify(DB));
   localStorage.setItem('fps_ctrs', JSON.stringify({skuN,saleN,cliN,entN,userN}));
-  // Sincronizar productos y ventas a Firebase
-  if (window._fbSave) {
-    window._fbSave(DB.products, DB.sales);
-  }
+  if (window._fbSaveProducts) window._fbSaveProducts(DB.products);
+  if (window._fbSaveSales)    window._fbSaveSales(DB.sales);
 }
 function dbLoad(){
   try{
@@ -1281,22 +1281,22 @@ function dbLoad(){
 
 function seedData(){
   const seed = [
-    {nombre:'Paracetamol 500mg 24 tabs',dept:'Analgésicos',lab:'Genérico',precio:18.50,mayoreo:15,costo:7.50,stock:120,minStock:20,maxStock:300,barcode:'7501234000001',vence:'2026-12-01',unidad:'Caja'},
-    {nombre:'Ibuprofeno 400mg 20 tabs',dept:'Analgésicos',lab:'Genérico',precio:24,mayoreo:20,costo:9.50,stock:85,minStock:15,maxStock:200,barcode:'7501234000002',vence:'2026-10-15',unidad:'Caja'},
-    {nombre:'Amoxicilina 500mg 20 caps',dept:'Antibióticos',lab:'Genérico',precio:62,mayoreo:55,costo:24,stock:40,minStock:10,maxStock:100,barcode:'7501234000003',vence:'2027-03-20',unidad:'Caja'},
-    {nombre:'Loratadina 10mg 10 tabs',dept:'Antialérgicos',lab:'Schering-Plough',precio:32,mayoreo:28,costo:12,stock:60,minStock:10,maxStock:150,barcode:'7501234000004',vence:'2027-01-10',unidad:'Caja'},
-    {nombre:'Omeprazol 20mg 14 caps',dept:'Gastroenterología',lab:'Genérico',precio:45,mayoreo:40,costo:17,stock:75,minStock:15,maxStock:200,barcode:'7501234000005',vence:'2026-08-30',unidad:'Caja'},
-    {nombre:'Metformina 850mg 30 tabs',dept:'Diabéticos',lab:'Sanofi',precio:52,mayoreo:47,costo:20,stock:30,minStock:10,maxStock:120,barcode:'7501234000006',vence:'2027-06-15',unidad:'Caja'},
-    {nombre:'Enalapril 10mg 30 tabs',dept:'Cardiovascular',lab:'MSD',precio:38,mayoreo:34,costo:14,stock:55,minStock:10,maxStock:150,barcode:'7501234000007',vence:'2027-04-01',unidad:'Caja'},
-    {nombre:'Vitamina C 500mg 30 tabs',dept:'Vitaminas',lab:'Bayer',precio:65,mayoreo:58,costo:28,stock:4,minStock:10,maxStock:100,barcode:'7501234000008',vence:'2026-11-20',unidad:'Frasco'},
-    {nombre:'Gel Antibacterial 250mL',dept:'Higiene',lab:'Sanitas',precio:49,mayoreo:44,costo:20,stock:0,minStock:5,maxStock:60,barcode:'7501234000009',vence:'2027-09-01',unidad:'Frasco'},
-    {nombre:'Termómetro Digital Oral',dept:'Dispositivos',lab:'Citizen',precio:189,mayoreo:170,costo:85,stock:8,minStock:3,maxStock:30,barcode:'7501234000010',vence:'',unidad:'Pieza'},
-    {nombre:'Dipirona 500mg 20 tabs',dept:'Analgésicos',lab:'Genérico',precio:16,mayoreo:14,costo:6,stock:90,minStock:20,maxStock:250,barcode:'7501234000011',vence:'2026-09-15',unidad:'Caja'},
-    {nombre:'Clonazepam 2mg 30 tabs',dept:'Neurología',lab:'Roche',precio:75,mayoreo:68,costo:30,stock:18,minStock:5,maxStock:60,barcode:'7501234000012',vence:'2027-02-28',unidad:'Caja'},
+    {name:'Paracetamol 500mg 24 tabs',dept:'Analgésicos',lab:'Genérico',price:18.50,pricewholesale:15,cost:7.50,stock:120,min:20,max:300,barcode:'7501234000001',expiry:'2026-12-01',unit:'Caja'},
+    {name:'Ibuprofeno 400mg 20 tabs',dept:'Analgésicos',lab:'Genérico',price:24,pricewholesale:20,cost:9.50,stock:85,min:15,max:200,barcode:'7501234000002',expiry:'2026-10-15',unit:'Caja'},
+    {name:'Amoxicilina 500mg 20 caps',dept:'Antibióticos',lab:'Genérico',price:62,pricewholesale:55,cost:24,stock:40,min:10,max:100,barcode:'7501234000003',expiry:'2027-03-20',unit:'Caja'},
+    {name:'Loratadina 10mg 10 tabs',dept:'Antialérgicos',lab:'Schering-Plough',price:32,pricewholesale:28,cost:12,stock:60,min:10,max:150,barcode:'7501234000004',expiry:'2027-01-10',unit:'Caja'},
+    {name:'Omeprazol 20mg 14 caps',dept:'Gastroenterología',lab:'Genérico',price:45,pricewholesale:40,cost:17,stock:75,min:15,max:200,barcode:'7501234000005',expiry:'2026-08-30',unit:'Caja'},
+    {name:'Metformina 850mg 30 tabs',dept:'Diabéticos',lab:'Sanofi',price:52,pricewholesale:47,cost:20,stock:30,min:10,max:120,barcode:'7501234000006',expiry:'2027-06-15',unit:'Caja'},
+    {name:'Enalapril 10mg 30 tabs',dept:'Cardiovascular',lab:'MSD',price:38,pricewholesale:34,cost:14,stock:55,min:10,max:150,barcode:'7501234000007',expiry:'2027-04-01',unit:'Caja'},
+    {name:'Vitamina C 500mg 30 tabs',dept:'Vitaminas',lab:'Bayer',price:65,pricewholesale:58,cost:28,stock:4,min:10,max:100,barcode:'7501234000008',expiry:'2026-11-20',unit:'Frasco'},
+    {name:'Gel Antibacterial 250mL',dept:'Higiene',lab:'Sanitas',price:49,pricewholesale:44,cost:20,stock:0,min:5,max:60,barcode:'7501234000009',expiry:'2027-09-01',unit:'Frasco'},
+    {name:'Termómetro Digital Oral',dept:'Dispositivos',lab:'Citizen',price:189,pricewholesale:170,cost:85,stock:8,min:3,max:30,barcode:'7501234000010',expiry:'',unit:'Pieza'},
+    {name:'Dipirona 500mg 20 tabs',dept:'Analgésicos',lab:'Genérico',price:16,pricewholesale:14,cost:6,stock:90,min:20,max:250,barcode:'7501234000011',expiry:'2026-09-15',unit:'Caja'},
+    {name:'Clonazepam 2mg 30 tabs',dept:'Neurología',lab:'Roche',price:75,pricewholesale:68,cost:30,stock:18,min:5,max:60,barcode:'7501234000012',expiry:'2027-02-28',unit:'Caja'},
   ];
-  seed.forEach(p=>{ const id='P'+String(skuN).padStart(4,'0'); DB.products.push({...p,id,codigo:'SKU-'+String(skuN).padStart(4,'0'),desc:''}); skuN++; });
-  const cli_seed=[{nombre:'María García López',tel:'5512345678',email:'maria@email.com',dir:'Av. Insurgentes 123',rfc:'',credito:1000,saldo:0,comen:''},
-    {nombre:'Roberto Hernández',tel:'5587654321',email:'',dir:'Calle Reforma 45',rfc:'',credito:500,saldo:0,comen:'Cliente frecuente'}];
+  seed.forEach(p=>{ const id='P'+String(skuN).padStart(4,'0'); DB.products.push({...p,id,sku:'SKU-'+String(skuN).padStart(4,'0'),desc:''}); skuN++; });
+  const cli_seed=[{name:'María García López',tel:'5512345678',email:'maria@email.com',dir:'Av. Insurgentes 123',rfc:'',credito:1000,saldo:0,comen:''},
+    {name:'Roberto Hernández',tel:'5587654321',email:'',dir:'Calle Reforma 45',rfc:'',credito:500,saldo:0,comen:'Cliente frecuente'}];
   cli_seed.forEach(c=>{ DB.clientes.push({...c,id:'C'+String(cliN++).padStart(4,'0'),creado:new Date().toISOString()}); });
   dbSave();
 }
@@ -1405,7 +1405,7 @@ function posRenderGrid(){
   const dept=document.getElementById('pos-dept').value;
   const g=document.getElementById('prod-grid');
   let prods=DB.products.filter(p=>{
-    const mq=!q||p.nombre.toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q);
+    const mq=!q||p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q);
     const md=!dept||p.dept===dept;
     return mq&&md;
   });
@@ -1413,31 +1413,31 @@ function posRenderGrid(){
     ? '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">Sin resultados</div>'
     : '<div style="text-align:center;padding:40px;color:var(--text3)">Sin resultados</div>';
   if(!prods.length){g.innerHTML=empty;return;}
-  const ms=DB.config.minStock;
+  const ms=DB.config.min;
   if(posViewMode==='grid'){
     g.innerHTML=prods.map(p=>{
-      const cls=p.stock===0?'out':p.stock<=(p.minStock||ms)?'low':'';
-      const stTxt=p.stock===0?'Sin stock':p.stock<=(p.minStock||ms)?`⚠ ${p.stock}`:`Stock: ${p.stock}`;
-      return `<div class="pcard ${cls}" onclick="${p.stock>0?`posAdd('${p.id}')`:''}" title="${p.nombre}">
-        <div class="pc-name">${p.nombre}</div>
+      const cls=p.stock===0?'out':p.stock<=(p.min||ms)?'low':'';
+      const stTxt=p.stock===0?'Sin stock':p.stock<=(p.min||ms)?`⚠ ${p.stock}`:`Stock: ${p.stock}`;
+      return `<div class="pcard ${cls}" onclick="${p.stock>0?`posAdd('${p.id}')`:''}" title="${p.name}">
+        <div class="pc-name">${p.name}</div>
         <div class="pc-dept">${p.dept||''}</div>
         <div class="pc-lab">${p.lab||''}</div>
-        <div class="pc-price">${fmt(p.precio)}</div>
+        <div class="pc-price">${fmt(p.price)}</div>
         <div class="pc-stock">${stTxt}</div>
       </div>`;
     }).join('');
   } else {
     // Lista
     g.innerHTML=prods.map(p=>{
-      const cls=p.stock===0?'out':p.stock<=(p.minStock||ms)?'low':'';
-      const stTxt=p.stock===0?'Sin stock':p.stock<=(p.minStock||ms)?`⚠ ${p.stock}`:`${p.stock} uds`;
-      return `<div class="pcard ${cls}" onclick="${p.stock>0?`posAdd('${p.id}')`:''}" title="${p.nombre}${p.desc?' — '+p.desc:''}">
-        <div class="pc-name">${p.nombre}</div>
+      const cls=p.stock===0?'out':p.stock<=(p.min||ms)?'low':'';
+      const stTxt=p.stock===0?'Sin stock':p.stock<=(p.min||ms)?`⚠ ${p.stock}`:`${p.stock} uds`;
+      return `<div class="pcard ${cls}" onclick="${p.stock>0?`posAdd('${p.id}')`:''}" title="${p.name}${p.desc?' — '+p.desc:''}">
+        <div class="pc-name">${p.name}</div>
         <div class="pc-desc">${p.desc||''}</div>
         <div class="pc-dept">${p.dept||'—'}</div>
         <div class="pc-lab">${p.lab||'—'}</div>
         <div class="pc-stock">${stTxt}</div>
-        <div class="pc-price">${fmt(p.precio)}</div>
+        <div class="pc-price">${fmt(p.price)}</div>
       </div>`;
     }).join('');
   }
@@ -1448,11 +1448,11 @@ function posSearch(){
   const q=(document.getElementById('pos-q').value||'').toLowerCase();
   const ac=document.getElementById('pos-ac');
   if(!q){ac.classList.remove('open');return;}
-  const hits=DB.products.filter(p=>p.stock>0&&(p.nombre.toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q))).slice(0,8);
+  const hits=DB.products.filter(p=>p.stock>0&&(p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q))).slice(0,8);
   if(!hits.length){ac.classList.remove('open');return;}
   ac.innerHTML=hits.map(p=>`<div class="ac-item" onclick="posAddFromAc('${p.id}')">
-    <div><div class="ain">${p.nombre}</div><div class="aim">${p.codigo} · ${p.dept||''}</div></div>
-    <div class="aim">${fmt(p.precio)} · ${p.stock} uds</div>
+    <div><div class="ain">${p.name}</div><div class="aim">${p.sku} · ${p.dept||''}</div></div>
+    <div class="aim">${fmt(p.price)} · ${p.stock} uds</div>
   </div>`).join('');
   ac.classList.add('open');
 }
@@ -1466,7 +1466,7 @@ function posKey(e){
   if(e.key==='Enter'){
     const q=e.target.value.trim();
     if(!q) return;
-    const p=DB.products.find(x=>x.barcode===q||x.codigo===q);
+    const p=DB.products.find(x=>x.barcode===q||x.sku===q);
     if(p&&p.stock>0){
       posAdd(p.id);
       e.target.value='';
@@ -1490,16 +1490,16 @@ function posKey(e){
 
 function posScanResult(p){
   const g=document.getElementById('prod-grid');
-  const ms=DB.config.minStock;
-  const stTxt=p.stock===0?'Sin stock':p.stock<=(p.minStock||ms)?`⚠ ${p.stock}`:`${p.stock} uds`;
+  const ms=DB.config.min;
+  const stTxt=p.stock===0?'Sin stock':p.stock<=(p.min||ms)?`⚠ ${p.stock}`:`${p.stock} uds`;
   // Render only this one product, with green highlight
   g.innerHTML=`<div class="pcard" style="background:#e6f9ee;outline:2.5px solid var(--green);border-radius:var(--r);pointer-events:none">
-    <div class="pc-name" style="font-size:16px">${p.nombre}</div>
+    <div class="pc-name" style="font-size:16px">${p.name}</div>
     <div class="pc-desc">${p.desc||''}</div>
     <div class="pc-dept">${p.dept||'—'}</div>
     <div class="pc-lab">${p.lab||'—'}</div>
     <div class="pc-stock" style="color:var(--green)">${stTxt}</div>
-    <div class="pc-price">${fmt(p.precio)}</div>
+    <div class="pc-price">${fmt(p.price)}</div>
   </div>`;
 }
 function posAddFromAc(id){posAdd(id);document.getElementById('pos-q').value='';document.getElementById('pos-ac').classList.remove('open');posRenderGrid();}
@@ -1509,7 +1509,7 @@ function posAdd(id){
   if(!p||p.stock<=0)return;
   const ex=cart.find(c=>c.id===id);
   if(ex){if(ex.qty>=p.stock){alert('Sin más stock disponible.');return;}ex.qty++;}
-  else cart.push({id,nombre:p.nombre,precio:parseFloat(p.precio),costo:parseFloat(p.costo||0),qty:1});
+  else cart.push({id,name:p.name,price:parseFloat(p.price),cost:parseFloat(p.cost||0),qty:1});
   renderCart();
 }
 function cartRemove(id){cart=cart.filter(c=>c.id!==id);renderCart();}
@@ -1531,8 +1531,8 @@ function renderCart(){
   if(!cart.length){el.innerHTML='<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px;">El carrito está vacío</div>';renderTotals();return;}
   el.innerHTML=cart.map(c=>`<div class="ci">
     <div class="ci-info">
-      <div class="ci-name">${c.nombre}${c.manual?` <span style="font-size:9px;background:#e7f9ee;color:var(--green);border-radius:4px;padding:1px 5px;font-weight:700;vertical-align:middle">MANUAL</span>`:''}</div>
-      <div class="ci-unit">${fmt(c.precio)} c/u · ${fmt(c.precio*c.qty)}</div>
+      <div class="ci-name">${c.name}${c.manual?` <span style="font-size:9px;background:#e7f9ee;color:var(--green);border-radius:4px;padding:1px 5px;font-weight:700;vertical-align:middle">MANUAL</span>`:''}</div>
+      <div class="ci-unit">${fmt(c.price)} c/u · ${fmt(c.price*c.qty)}</div>
     </div>
     <div class="ci-qty">
       <button onclick="cartQty('${c.id}',-1)">−</button>
@@ -1547,7 +1547,7 @@ function renderCart(){
 function renderTotals(){
   const desc=parseFloat(document.getElementById('cart-desc').value||0);
   const iva=parseFloat(DB.config.iva??16);
-  const sub=cart.reduce((s,c)=>s+c.precio*c.qty,0);
+  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0);
   const damt=sub*(desc/100);
   const base=sub-damt;
   const ivaAmt=base*(iva/100);
@@ -1574,7 +1574,7 @@ function setPago(p){
 function calcCambio(){
   const desc=parseFloat(document.getElementById('cart-desc').value||0);
   const iva=parseFloat(DB.config.iva??16);
-  const sub=cart.reduce((s,c)=>s+c.precio*c.qty,0);
+  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0);
   const damt=sub*(desc/100);
   const base=sub-damt;
   const ivaAmt=base*(iva/100);
@@ -1597,7 +1597,7 @@ function abrirConfirmVenta(){
   if(!cart.length) return;
   const desc=parseFloat(document.getElementById('cart-desc').value||0);
   const iva=parseFloat(DB.config.iva??16);
-  const sub=cart.reduce((s,c)=>s+c.precio*c.qty,0);
+  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0);
   const damt=sub*(desc/100);
   const base=sub-damt;
   const ivaAmt=base*(iva/100);
@@ -1643,9 +1643,9 @@ function abrirConfirmVenta(){
   const itemsEl=document.getElementById('cv-items');
   itemsEl.innerHTML=cart.map(c=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px">
-      <span style="font-weight:600;flex:1;margin-right:8px">${c.nombre}${c.manual?' <span style="font-size:9px;background:#e7f9ee;color:var(--green);border-radius:3px;padding:1px 4px">MANUAL</span>':''}</span>
-      <span style="color:var(--text2);white-space:nowrap">${c.qty} × ${fmt(c.precio)}</span>
-      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;width:68px;text-align:right">${fmt(c.precio*c.qty)}</span>
+      <span style="font-weight:600;flex:1;margin-right:8px">${c.name}${c.manual?' <span style="font-size:9px;background:#e7f9ee;color:var(--green);border-radius:3px;padding:1px 4px">MANUAL</span>':''}</span>
+      <span style="color:var(--text2);white-space:nowrap">${c.qty} × ${fmt(c.price)}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;width:68px;text-align:right">${fmt(c.price*c.qty)}</span>
     </div>`).join('');
 
   openModal('m-confirm-venta');
@@ -1660,7 +1660,7 @@ function procesarVenta(){
   if(!cart.length)return;
   const desc=parseFloat(document.getElementById('cart-desc').value||0);
   const iva=parseFloat(DB.config.iva??16);
-  const sub=cart.reduce((s,c)=>s+c.precio*c.qty,0);
+  const sub=cart.reduce((s,c)=>s+c.price*c.qty,0);
   const damt=sub*(desc/100);
   const base=sub-damt;
   const ivaAmt=base*(iva/100);
@@ -1676,7 +1676,7 @@ function procesarVenta(){
     id:'T'+String(saleN++).padStart(6,'0'),
     fecha:now.toISOString(),
     cliente:cli,
-    cajero:currentUser?currentUser.nombre:(DB.config.cajero||'Cajero'),
+    cajero:currentUser?currentUser.name:(DB.config.cajero||'Cajero'),
     items:JSON.parse(JSON.stringify(cart)),
     sub,descPct:desc,descAmt:damt,iva:ivaAmt,total,pago:pagoPref,
     recibido,cambio
@@ -1699,7 +1699,7 @@ function procesarVenta(){
 
 // ════════════════════════════ TICKET ════════════════════════════
 function buildTicketText(s){
-  const nom=DB.config.nombre||'Farmacia IRE';
+  const nom=DB.config.name||'Farmacia IRE';
   const w=40;
   const line='─'.repeat(w);
   const center=t=>' '.repeat(Math.max(0,Math.floor((w-t.length)/2)))+t;
@@ -1715,9 +1715,9 @@ function buildTicketText(s){
   t+=`Cliente: ${s.cliente}\nCajero:  ${s.cajero}\n`;
   t+=line+'\n';
   s.items.forEach(i=>{
-    t+=`${i.nombre}\n`;
-    const r=`${fmt(i.precio)} × ${i.qty}`;
-    const tot=fmt(i.precio*i.qty);
+    t+=`${i.name}\n`;
+    const r=`${fmt(i.price)} × ${i.qty}`;
+    const tot=fmt(i.price*i.qty);
     t+=`  ${r}${' '.repeat(Math.max(1,w-2-r.length-tot.length))}${tot}\n`;
   });
   t+=line+'\n';
@@ -1743,7 +1743,7 @@ function buildTicketText(s){
 }
 
 function buildTicketHTML(s){
-  const nom=DB.config.nombre||'Farmacia IRE';
+  const nom=DB.config.name||'Farmacia IRE';
   const d=new Date(s.fecha);
   const fStr=d.toLocaleDateString('es-MX')+' '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   const pagoMap={efectivo:'EFECTIVO',tarjeta:'TARJETA',transferencia:'TRANSFERENCIA'};
@@ -1762,9 +1762,9 @@ function buildTicketHTML(s){
   // Items
   s.items.forEach(i=>{
     h+=`<div style="margin-bottom:6px">`;
-    h+=`<div style="font-weight:600">${i.nombre}</div>`;
+    h+=`<div style="font-weight:600">${i.name}</div>`;
     h+=`<div style="display:flex;justify-content:space-between;font-size:12px;color:#444">`;
-    h+=`<span>${fmt(i.precio)} × ${i.qty}</span><span style="font-weight:700">${fmt(i.precio*i.qty)}</span>`;
+    h+=`<span>${fmt(i.price)} × ${i.qty}</span><span style="font-weight:700">${fmt(i.price*i.qty)}</span>`;
     h+=`</div></div>`;
   });
   h+=line;
@@ -1810,12 +1810,12 @@ function invRender(){
   const q=(document.getElementById('inv-q').value||'').toLowerCase();
   const dept=document.getElementById('inv-dept').value;
   const sf=document.getElementById('inv-stock-f').value;
-  const ms=DB.config.minStock;
+  const ms=DB.config.min;
   const tbody=document.getElementById('inv-tbody');
   let prods=DB.products.filter(p=>{
-    const mq=!q||p.nombre.toLowerCase().includes(q)||(p.codigo||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q);
+    const mq=!q||p.name.toLowerCase().includes(q)||(p.sku||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.desc||'').toLowerCase().includes(q)||(p.lab||'').toLowerCase().includes(q)||(p.dept||'').toLowerCase().includes(q);
     const md=!dept||p.dept===dept;
-    const minS=p.minStock||ms;
+    const minS=p.min||ms;
     const msok=!sf||(sf==='low'&&p.stock>0&&p.stock<=minS)||(sf==='out'&&p.stock===0);
     return mq&&md&&msok;
   });
@@ -1835,14 +1835,14 @@ function invRender(){
     }
     return;
   }
-  const ms2=DB.config.minStock;
+  const ms2=DB.config.min;
   // Toast si la búsqueda vino del escáner (campo tiene valor y hay exactamente 1 resultado)
   if(window._scLastScan){
     var _sc=window._scLastScan;
     window._scLastScan=null;
     setTimeout(function(){
       var msg = prods.length>0
-        ? '✅ Producto encontrado: '+prods[0].nombre
+        ? '✅ Producto encontrado: '+prods[0].name
         : '❌ Producto no encontrado en inventario';
       var bg = prods.length>0 ? '#2f9e44' : '#c92a2a';
       var t=document.getElementById('_inv_toast');
@@ -1873,22 +1873,22 @@ function invRender(){
     }
   }
   tbody.innerHTML=prods.map(p=>{
-    const minS=p.minStock||ms2;
+    const minS=p.min||ms2;
     let badge=`<span class="badge bg">OK</span>`;
     if(p.stock===0) badge=`<span class="badge br">Sin stock</span>`;
     else if(p.stock<=minS) badge=`<span class="badge bo">Stock bajo</span>`;
-    const vStr=p.vence?`<span style="color:${isExpired(p.vence)?'var(--red)':expiringSoon(p.vence)?'var(--orange)':'inherit'}">${p.vence}</span>`:'—';
+    const vStr=p.expiry?`<span style="color:${isExpired(p.expiry)?'var(--red)':expiringSoon(p.expiry)?'var(--orange)':'inherit'}">${p.expiry}</span>`:'—';
     return `<tr>
-      <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.barcode||p.codigo||'—'}</span></td>
-      <td style="font-weight:700">${p.nombre}</td>
+      <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px">${p.barcode||p.sku||'—'}</span></td>
+      <td style="font-weight:700">${p.name}</td>
       <td style="font-size:11px;color:var(--text2);font-style:italic;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.desc||'—'}</td>
       <td style="color:var(--text2);font-size:12px">${p.lab||'—'}</td>
       <td><span class="badge bb">${p.dept||'—'}</span></td>
-      <td style="font-family:'JetBrains Mono',monospace">${fmt(p.precio)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;color:var(--text2)">${fmt(p.costo||0)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${fmt(p.price)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--text2)">${fmt(p.cost||0)}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-weight:700">${p.stock}</td>
-      <td style="color:var(--text2)">${p.minStock||ms2}</td>
-      <td style="color:var(--text2)">${p.maxStock||'—'}</td>
+      <td style="color:var(--text2)">${p.min||ms2}</td>
+      <td style="color:var(--text2)">${p.max||'—'}</td>
       <td>${vStr}</td>
       <td>${badge}</td>
       <td>
@@ -1909,9 +1909,9 @@ function openProdModal(id){
   if(id){
     const p=DB.products.find(x=>x.id===id);
     if(!p)return;
-    document.getElementById('p-codigo').value=p.codigo||'';
+    document.getElementById('p-codigo').value=p.sku||'';
     document.getElementById('p-barcode').value=p.barcode||'';
-    document.getElementById('p-nombre').value=p.nombre||'';
+    document.getElementById('p-nombre').value=p.name||'';
     // If dept not in list yet, add it temporarily
     const deptSel=document.getElementById('p-dept');
     if(p.dept&&![...deptSel.options].find(o=>o.value===p.dept)){
@@ -1919,20 +1919,20 @@ function openProdModal(id){
     }
     deptSel.value=p.dept||'';
     document.getElementById('p-lab').value=p.lab||'';
-    document.getElementById('p-precio').value=p.precio||'';
-    document.getElementById('p-mayoreo').value=p.mayoreo||'';
-    document.getElementById('p-costo').value=p.costo||'';
-    document.getElementById('p-unidad').value=p.unidad||'Pieza';
+    document.getElementById('p-precio').value=p.price||'';
+    document.getElementById('p-mayoreo').value=p.pricewholesale||'';
+    document.getElementById('p-costo').value=p.cost||'';
+    document.getElementById('p-unidad').value=p.unit||'Pieza';
     document.getElementById('p-stock').value=p.stock||0;
-    document.getElementById('p-minstock').value=p.minStock||DB.config.minStock;
-    document.getElementById('p-maxstock').value=p.maxStock||'';
-    document.getElementById('p-vence').value=p.vence||'';
+    document.getElementById('p-minstock').value=p.min||DB.config.min;
+    document.getElementById('p-maxstock').value=p.max||'';
+    document.getElementById('p-vence').value=p.expiry||'';
     document.getElementById('p-desc').value=p.desc||'';
   } else {
     ['p-codigo','p-barcode','p-nombre','p-lab','p-precio','p-mayoreo','p-costo','p-vence','p-desc'].forEach(i=>document.getElementById(i).value='');
     document.getElementById('p-dept').value='';
     document.getElementById('p-stock').value=0;
-    document.getElementById('p-minstock').value=DB.config.minStock;
+    document.getElementById('p-minstock').value=DB.config.min;
     document.getElementById('p-maxstock').value='';
     document.getElementById('p-unidad').value='Pieza';
   }
@@ -1943,19 +1943,19 @@ function saveProd(){
   if(!nom){alert('El nombre es obligatorio.');return;}
   const editId=document.getElementById('p-id').value;
   const data={
-    nombre:nom,
-    codigo:document.getElementById('p-codigo').value.trim()||('SKU-'+String(skuN).padStart(4,'0')),
+    name:nom,
+    sku:document.getElementById('p-codigo').value.trim()||('SKU-'+String(skuN).padStart(4,'0')),
     barcode:document.getElementById('p-barcode').value.trim(),
     dept:document.getElementById('p-dept').value.trim(),
     lab:document.getElementById('p-lab').value.trim(),
-    precio:parseFloat(document.getElementById('p-precio').value)||0,
-    mayoreo:parseFloat(document.getElementById('p-mayoreo').value)||0,
-    costo:parseFloat(document.getElementById('p-costo').value)||0,
-    unidad:document.getElementById('p-unidad').value,
+    price:parseFloat(document.getElementById('p-precio').value)||0,
+    pricewholesale:parseFloat(document.getElementById('p-mayoreo').value)||0,
+    cost:parseFloat(document.getElementById('p-costo').value)||0,
+    unit:document.getElementById('p-unidad').value,
     stock:parseInt(document.getElementById('p-stock').value)||0,
-    minStock:parseInt(document.getElementById('p-minstock').value)||DB.config.minStock,
-    maxStock:parseInt(document.getElementById('p-maxstock').value)||0,
-    vence:document.getElementById('p-vence').value,
+    min:parseInt(document.getElementById('p-minstock').value)||DB.config.min,
+    max:parseInt(document.getElementById('p-maxstock').value)||0,
+    expiry:document.getElementById('p-vence').value,
     desc:document.getElementById('p-desc').value.trim(),
   };
   if(editId){
@@ -1982,36 +1982,36 @@ function delProd(id){
 function exportInvExcel(){
   if(typeof XLSX==='undefined'){alert('XLSX no disponible, usa CSV.');return;}
   const rows=DB.products.map(p=>({
-    Código:p.codigo,'Cód. Barras':p.barcode||'',Nombre:p.nombre,
+    Código:p.sku,'Cód. Barras':p.barcode||'',Nombre:p.name,
     'Descripción':p.desc||'',
     Departamento:p.dept||'',Laboratorio:p.lab||'',
-    'Precio Venta':p.precio,'Precio Mayoreo':p.mayoreo||0,Costo:p.costo||0,
-    Ganancia:(p.precio-(p.costo||0)).toFixed(2),'Stock Actual':p.stock,'Stock Mín':p.minStock||DB.config.minStock,
-    'Stock Máx':p.maxStock||'',Unidad:p.unidad||'',Vencimiento:p.vence||'',
-    Estado:p.stock===0?'Sin Stock':p.stock<=(p.minStock||DB.config.minStock)?'Stock Bajo':'OK'
+    'Precio Venta':p.price,'Precio Mayoreo':p.pricewholesale||0,Costo:p.cost||0,
+    Ganancia:(p.price-(p.cost||0)).toFixed(2),'Stock Actual':p.stock,'Stock Mín':p.min||DB.config.min,
+    'Stock Máx':p.max||'',Unidad:p.unit||'',Vencimiento:p.expiry||'',
+    Estado:p.stock===0?'Sin Stock':p.stock<=(p.min||DB.config.min)?'Stock Bajo':'OK'
   }));
   const ws=XLSX.utils.json_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Inventario');
-  XLSX.writeFile(wb,`Inventario_${DB.config.nombre.replace(/\s/g,'_')}_${today()}.xlsx`);
+  XLSX.writeFile(wb,`Inventario_${DB.config.name.replace(/\s/g,'_')}_${today()}.xlsx`);
 }
 function exportInvCSV(){
   const h=['Código','Cód. Barras','Nombre','Descripción','Departamento','Laboratorio','Precio Venta','Costo','Stock Actual','Stock Mín','Unidad','Vencimiento','Estado'];
   const rows=DB.products.map(p=>[
-    p.codigo,p.barcode||'',p.nombre,p.desc||'',p.dept||'',p.lab||'',
-    p.precio.toFixed(2),(p.costo||0).toFixed(2),p.stock,p.minStock||DB.config.minStock,p.unidad||'',p.vence||'',
-    p.stock===0?'Sin Stock':p.stock<=(p.minStock||DB.config.minStock)?'Stock Bajo':'OK'
+    p.sku,p.barcode||'',p.name,p.desc||'',p.dept||'',p.lab||'',
+    p.price.toFixed(2),(p.cost||0).toFixed(2),p.stock,p.min||DB.config.min,p.unit||'',p.expiry||'',
+    p.stock===0?'Sin Stock':p.stock<=(p.min||DB.config.min)?'Stock Bajo':'OK'
   ].map(v=>`"${String(v).replace(/"/g,'""')}"`));
   const csv=[h.join(','),...rows.map(r=>r.join(','))].join('\r\n');
-  dlBlob('\uFEFF'+csv,'text/csv',`Inventario_${DB.config.nombre.replace(/\s/g,'_')}_${today()}.csv`);
+  dlBlob('\uFEFF'+csv,'text/csv',`Inventario_${DB.config.name.replace(/\s/g,'_')}_${today()}.csv`);
 }
 
 function exportInvFiltrado(tipo){
   if(typeof XLSX==='undefined'){alert('XLSX no disponible.');return;}
-  const ms=DB.config.minStock;
+  const ms=DB.config.min;
   let prods, label;
   if(tipo==='low'){
-    prods=DB.products.filter(p=>p.stock>0&&p.stock<=(p.minStock||ms));
+    prods=DB.products.filter(p=>p.stock>0&&p.stock<=(p.min||ms));
     label='Stock_Bajo';
   } else {
     prods=DB.products.filter(p=>p.stock===0);
@@ -2022,17 +2022,17 @@ function exportInvFiltrado(tipo){
     return;
   }
   const rows=prods.map(p=>({
-    Código:p.codigo,'Cód. Barras':p.barcode||'',Nombre:p.nombre,
+    Código:p.sku,'Cód. Barras':p.barcode||'',Nombre:p.name,
     Descripción:p.desc||'',Departamento:p.dept||'',Laboratorio:p.lab||'',
-    'Precio Venta':p.precio,Costo:p.costo||0,
-    'Stock Actual':p.stock,'Stock Mín':p.minStock||ms,'Stock Máx':p.maxStock||'',
-    Unidad:p.unidad||'',Vencimiento:p.vence||'',
+    'Precio Venta':p.price,Costo:p.cost||0,
+    'Stock Actual':p.stock,'Stock Mín':p.min||ms,'Stock Máx':p.max||'',
+    Unidad:p.unit||'',Vencimiento:p.expiry||'',
     Estado:p.stock===0?'Sin Stock':'Stock Bajo'
   }));
   const ws=XLSX.utils.json_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,label.replace('_',' '));
-  XLSX.writeFile(wb,`${label}_${DB.config.nombre.replace(/\s/g,'_')}_${today()}.xlsx`);
+  XLSX.writeFile(wb,`${label}_${DB.config.name.replace(/\s/g,'_')}_${today()}.xlsx`);
 }
 
 // ════════════════════════════ VENTAS ════════════════════════════
@@ -2073,13 +2073,13 @@ function exportVentasExcel(){
   const rows=DB.sales.map(s=>({
     Ticket:s.id,Fecha:new Date(s.fecha).toLocaleString('es-MX'),
     Cliente:s.cliente,Cajero:s.cajero,
-    Artículos:s.items.map(i=>`${i.nombre} x${i.qty}`).join('; '),
+    Artículos:s.items.map(i=>`${i.name} x${i.qty}`).join('; '),
     Subtotal:s.sub.toFixed(2),'Descuento%':s.descPct,IVA:s.iva.toFixed(2),Total:s.total.toFixed(2),Pago:s.pago
   }));
   const ws=XLSX.utils.json_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Ventas');
-  XLSX.writeFile(wb,`Ventas_${DB.config.nombre.replace(/\s/g,'_')}_${today()}.xlsx`);
+  XLSX.writeFile(wb,`Ventas_${DB.config.name.replace(/\s/g,'_')}_${today()}.xlsx`);
 }
 
 // ════════════════════════════ REPORTES ════════════════════════════
@@ -2120,7 +2120,7 @@ function getSalesForTab(){
 function renderReportes(){
   const sales=getSalesForTab();
   const totalVenta=sales.reduce((a,s)=>a+s.total,0);
-  const ganancia=sales.reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.precio-(i.costo||0))*i.qty,0),0);
+  const ganancia=sales.reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.price-(i.cost||0))*i.qty,0),0);
   const tickets=sales.length;
   const promedio=tickets?totalVenta/tickets:0;
   const efectivo=sales.filter(s=>s.pago==='efectivo').reduce((a,s)=>a+s.total,0);
@@ -2141,9 +2141,9 @@ function renderReportes(){
   document.getElementById('r-promedio').textContent=fmt(promedio);
   document.getElementById('r-efectivo').textContent=fmt(efectivo);
   document.getElementById('r-tarjeta').textContent=fmt(tarjeta);
-  const ms=DB.config.minStock;
+  const ms=DB.config.min;
   document.getElementById('r-prods').textContent=DB.products.length;
-  document.getElementById('r-low').textContent=DB.products.filter(p=>p.stock>0&&p.stock<=(p.minStock||ms)).length;
+  document.getElementById('r-low').textContent=DB.products.filter(p=>p.stock>0&&p.stock<=(p.min||ms)).length;
 
   // Pago breakdown
   const pr=document.getElementById('r-pago-rows');
@@ -2213,9 +2213,9 @@ function renderReportes(){
   // Top products for this period
   const counter={};
   sales.forEach(s=>s.items.forEach(i=>{
-    const key=i.nombre;
-    if(!counter[key]) counter[key]={nombre:i.nombre,qty:0,rev:0};
-    counter[key].qty+=i.qty; counter[key].rev+=i.precio*i.qty;
+    const key=i.name;
+    if(!counter[key]) counter[key]={name:i.name,qty:0,rev:0};
+    counter[key].qty+=i.qty; counter[key].rev+=i.price*i.qty;
   }));
   const top=Object.values(counter).sort((a,b)=>b.qty-a.qty).slice(0,10);
   const topTitle=document.getElementById('r-top-title');
@@ -2227,7 +2227,7 @@ function renderReportes(){
   }
   rtb.innerHTML=top.map((p,i)=>`<tr>
     <td style="font-weight:800;color:var(--accent)">${i+1}</td>
-    <td style="font-weight:700">${p.nombre}</td>
+    <td style="font-weight:700">${p.name}</td>
     <td style="font-family:'JetBrains Mono',monospace">${p.qty}</td>
     <td style="font-family:'JetBrains Mono',monospace;color:var(--green)">${fmt(p.rev)}</td>
   </tr>`).join('');
@@ -2242,7 +2242,7 @@ function exportReporteExcel(){
     Ticket:s.id,
     Fecha:new Date(s.fecha).toLocaleString('es-MX'),
     Cajero:s.cajero,
-    Artículos:s.items.map(i=>`${i.nombre} x${i.qty}`).join('; '),
+    Artículos:s.items.map(i=>`${i.name} x${i.qty}`).join('; '),
     Subtotal:s.sub.toFixed(2),
     IVA:s.iva.toFixed(2),
     Total:s.total.toFixed(2),
@@ -2250,13 +2250,13 @@ function exportReporteExcel(){
   }));
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Ventas '+labels[reporteTab]);
-  XLSX.writeFile(wb,`Reporte_${reporteTab}_${DB.config.nombre.replace(/\s/g,'_')}_${today()}.xlsx`);
+  XLSX.writeFile(wb,`Reporte_${reporteTab}_${DB.config.name.replace(/\s/g,'_')}_${today()}.xlsx`);
 }
 
 // ════════════════════════════ CONFIGURACIÓN ════════════════════════════
 function cfgLoad(){
   const c=DB.config;
-  document.getElementById('cfg-nom').value=c.nombre||'';
+  document.getElementById('cfg-nom').value=c.name||'';
   document.getElementById('cfg-tel').value=c.tel||'';
   document.getElementById('cfg-dir').value=c.dir||'';
   document.getElementById('cfg-rfc').value=c.rfc||'';
@@ -2264,7 +2264,7 @@ function cfgLoad(){
   document.getElementById('cfg-leyenda').value=c.leyenda||'';
   document.getElementById('cfg-cajero').value=c.cajero||'';
   document.getElementById('cfg-iva').value=c.iva!==undefined?c.iva:16;
-  document.getElementById('cfg-minstock').value=c.minStock||5;
+  document.getElementById('cfg-minstock').value=c.min||5;
   document.getElementById('cfg-moneda').value=c.moneda||'$';
   if(c.logo){
     document.getElementById('logo-img').src=c.logo;
@@ -2273,7 +2273,7 @@ function cfgLoad(){
   }
 }
 function cfgSave(){
-  DB.config.nombre=document.getElementById('cfg-nom').value.trim()||'Farmacia IRE';
+  DB.config.name=document.getElementById('cfg-nom').value.trim()||'Farmacia IRE';
   DB.config.tel=document.getElementById('cfg-tel').value.trim();
   DB.config.dir=document.getElementById('cfg-dir').value.trim();
   DB.config.rfc=document.getElementById('cfg-rfc').value.trim();
@@ -2281,12 +2281,12 @@ function cfgSave(){
   DB.config.leyenda=document.getElementById('cfg-leyenda').value.trim();
   DB.config.cajero=document.getElementById('cfg-cajero').value.trim();
   DB.config.iva=parseFloat(document.getElementById('cfg-iva').value||'0');
-  DB.config.minStock=parseInt(document.getElementById('cfg-minstock').value)||5;
+  DB.config.min=parseInt(document.getElementById('cfg-minstock').value)||5;
   DB.config.moneda=document.getElementById('cfg-moneda').value||'$';
   applyBranding();dbSave();renderTotals();
 }
 function applyBranding(){
-  const n=DB.config.nombre||'Farmacia IRE';
+  const n=DB.config.name||'Farmacia IRE';
   document.getElementById('sb-name').textContent=n;
   document.title=n+' — POS';
   const caj=DB.config.cajero||'Administrador';
@@ -2431,8 +2431,8 @@ function doLogout(){
 function applySessionUser(){
   if(!currentUser)return;
   const isAdmin=currentUser.rol==='admin';
-  document.getElementById('sb-cajero').textContent=currentUser.nombre;
-  document.getElementById('sb-avatar').textContent=currentUser.nombre[0].toUpperCase();
+  document.getElementById('sb-cajero').textContent=currentUser.name;
+  document.getElementById('sb-avatar').textContent=currentUser.name[0].toUpperCase();
   document.getElementById('sb-role').textContent=isAdmin?'Administrador':'Empleado / Cajero';
   // Mostrar/ocultar nav de usuarios según rol
   const navU=document.getElementById('nav-btn-usuarios');
@@ -2535,7 +2535,7 @@ function abrirCorte(){
 
   // KPIs
   const totalVenta = todaySales.reduce((a,s) => a+s.total, 0);
-  const ganancia   = todaySales.reduce((a,s) => a+s.items.reduce((b,i) => b+(i.precio-(i.costo||0))*i.qty, 0), 0);
+  const ganancia   = todaySales.reduce((a,s) => a+s.items.reduce((b,i) => b+(i.price-(i.cost||0))*i.qty, 0), 0);
   const articulos  = todaySales.reduce((a,s) => a+s.items.reduce((b,i) => b+i.qty, 0), 0);
   const descuentos = todaySales.reduce((a,s) => a+(s.descAmt||0), 0);
   const promedio   = todaySales.length ? totalVenta/todaySales.length : 0;
@@ -2559,8 +2559,8 @@ function abrirCorte(){
   // Top productos del día
   const counter={};
   todaySales.forEach(s=>s.items.forEach(i=>{
-    if(!counter[i.id]) counter[i.id]={nombre:i.nombre,qty:0,total:0};
-    counter[i.id].qty+=i.qty; counter[i.id].total+=i.precio*i.qty;
+    if(!counter[i.id]) counter[i.id]={name:i.name,qty:0,total:0};
+    counter[i.id].qty+=i.qty; counter[i.id].total+=i.price*i.qty;
   }));
   const top = Object.values(counter).sort((a,b)=>b.qty-a.qty).slice(0,8);
   const listEl = document.getElementById('c-top-items');
@@ -2570,14 +2570,14 @@ function abrirCorte(){
     listEl.innerHTML = top.map((p,i)=>`
       <div class="corte-item-row">
         <span style="color:var(--accent);font-weight:800;width:20px">${i+1}</span>
-        <span style="flex:1;font-weight:600;padding:0 8px">${p.nombre}</span>
+        <span style="flex:1;font-weight:600;padding:0 8px">${p.name}</span>
         <span style="color:var(--text2);width:50px;text-align:center">${p.qty} uds</span>
         <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--green);width:72px;text-align:right">${fmt(p.total)}</span>
       </div>`).join('');
   }
 
   // Turno info
-  document.getElementById('c-cajero').textContent = currentUser ? currentUser.nombre : (DB.config.cajero||'—');
+  document.getElementById('c-cajero').textContent = currentUser ? currentUser.name : (DB.config.cajero||'—');
   document.getElementById('c-hora').textContent   = now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   const sortedSales = [...todaySales].sort((a,b)=>a.fecha.localeCompare(b.fecha));
   document.getElementById('c-primer-ticket').textContent = sortedSales.length ? sortedSales[0].id+' — '+new Date(sortedSales[0].fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
@@ -2601,7 +2601,7 @@ function confirmarCorte(){
   const corteRecord = {
     fecha: new Date().toISOString(),
     dia: todayStr,
-    cajero: currentUser ? currentUser.nombre : (DB.config.cajero||'Sistema'),
+    cajero: currentUser ? currentUser.name : (DB.config.cajero||'Sistema'),
     tickets: todaySales.length,
     total: todaySales.reduce((a,s)=>a+s.total,0),
     efectivo: todaySales.filter(s=>s.pago==='efectivo').reduce((a,s)=>a+s.total,0),
@@ -2627,7 +2627,7 @@ function imprimirCorte(){
   const now = new Date();
   const todaySales = DB.sales.filter(s=>s.fecha.startsWith(todayStr));
   const totalVenta = todaySales.reduce((a,s)=>a+s.total,0);
-  const ganancia   = todaySales.reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.precio-(i.costo||0))*i.qty,0),0);
+  const ganancia   = todaySales.reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.price-(i.cost||0))*i.qty,0),0);
   const ef  = todaySales.filter(s=>s.pago==='efectivo').reduce((a,s)=>a+s.total,0);
   const tar = todaySales.filter(s=>s.pago==='tarjeta').reduce((a,s)=>a+s.total,0);
   const tra = todaySales.filter(s=>s.pago==='transferencia').reduce((a,s)=>a+s.total,0);
@@ -2635,7 +2635,7 @@ function imprimirCorte(){
   const line='='.repeat(w);
   const line2='-'.repeat(w);
   const center=function(t){return ' '.repeat(Math.max(0,Math.floor((w-t.length)/2)))+t;};
-  const nom = DB.config.nombre||'Farmacia IRE';
+  const nom = DB.config.name||'Farmacia IRE';
   const N = '\n';
   let txt='';
   txt+=center(nom.toUpperCase())+N;
@@ -2643,7 +2643,7 @@ function imprimirCorte(){
   txt+=center(now.toLocaleDateString('es-MX',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}))+N;
   txt+=center('Hora: '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}))+N;
   txt+=line+N;
-  txt+='Cajero: '+(currentUser?currentUser.nombre:(DB.config.cajero||'-'))+N;
+  txt+='Cajero: '+(currentUser?currentUser.name:(DB.config.cajero||'-'))+N;
   txt+=line2+N;
   txt+='RESUMEN DE VENTAS'+N;
   txt+=line2+N;
@@ -2675,7 +2675,7 @@ function exportarCorteExcel(){
     Ticket:s.id,
     Hora:new Date(s.fecha).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
     Cliente:s.cliente, Cajero:s.cajero,
-    Artículos:s.items.map(i=>`${i.nombre} x${i.qty}`).join('; '),
+    Artículos:s.items.map(i=>`${i.name} x${i.qty}`).join('; '),
     Subtotal:s.sub.toFixed(2),'Descuento':s.descAmt.toFixed(2),
     IVA:s.iva.toFixed(2),Total:s.total.toFixed(2),
     Pago:pagoMap[s.pago]||s.pago
@@ -2684,10 +2684,10 @@ function exportarCorteExcel(){
   const todayFmt=new Date().toLocaleDateString('es-MX');
   const summary=[
     {Concepto:'Fecha',Valor:todayFmt},
-    {Concepto:'Cajero',Valor:currentUser?currentUser.nombre:(DB.config.cajero||'—')},
+    {Concepto:'Cajero',Valor:currentUser?currentUser.name:(DB.config.cajero||'—')},
     {Concepto:'Total tickets',Valor:todaySales.length},
     {Concepto:'Venta total',Valor:todaySales.reduce((a,s)=>a+s.total,0).toFixed(2)},
-    {Concepto:'Ganancia',Valor:todaySales.reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.precio-(i.costo||0))*i.qty,0),0).toFixed(2)},
+    {Concepto:'Ganancia',Valor:todaySales.reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.price-(i.cost||0))*i.qty,0),0).toFixed(2)},
     {Concepto:'Efectivo',Valor:todaySales.filter(s=>s.pago==='efectivo').reduce((a,s)=>a+s.total,0).toFixed(2)},
     {Concepto:'Tarjeta',Valor:todaySales.filter(s=>s.pago==='tarjeta').reduce((a,s)=>a+s.total,0).toFixed(2)},
     {Concepto:'Transferencia',Valor:todaySales.filter(s=>s.pago==='transferencia').reduce((a,s)=>a+s.total,0).toFixed(2)},
@@ -2695,7 +2695,7 @@ function exportarCorteExcel(){
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(summary),'Resumen Corte');
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Detalle Ventas');
-  XLSX.writeFile(wb,`Corte_${DB.config.nombre.replace(/\s/g,'_')}_${todayStr}.xlsx`);
+  XLSX.writeFile(wb,`Corte_${DB.config.name.replace(/\s/g,'_')}_${todayStr}.xlsx`);
 }
 
 function emergencyReset(){
@@ -2735,8 +2735,8 @@ function cqRender(){
   // Search across name, desc, lab, dept, barcode, codigo
   const results = DB.products.filter(p=>{
     const haystack = [
-      p.nombre||'', p.desc||'', p.lab||'', p.dept||'',
-      p.barcode||'', p.codigo||''
+      p.name||'', p.desc||'', p.lab||'', p.dept||'',
+      p.barcode||'', p.sku||''
     ].join(' ').toLowerCase();
     // Support multiple words: all must match
     return q.split(/\s+/).every(word => haystack.includes(word));
@@ -2755,7 +2755,7 @@ function cqRender(){
     return;
   }
 
-  const ms = DB.config.minStock;
+  const ms = DB.config.min;
 
   function highlight(text, q){
     if(!text) return '—';
@@ -2769,7 +2769,7 @@ function cqRender(){
   }
 
   function stockBadge(p){
-    const minS = p.minStock||ms;
+    const minS = p.min||ms;
     if(p.stock===0) return '<span class="badge br">Sin stock</span>';
     if(p.stock<=minS) return '<span class="badge bo">Stock bajo</span>';
     return '<span class="badge bg">OK</span>';
@@ -2781,7 +2781,7 @@ function cqRender(){
 
         <!-- Left: name + badges -->
         <div style="flex:1;min-width:200px">
-          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">${highlight(p.nombre,q)}</div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">${highlight(p.name,q)}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
             ${p.dept?`<span class="badge bb">${p.dept}</span>`:''}
             ${p.lab?`<span class="badge bgr">${p.lab}</span>`:''}
@@ -2792,15 +2792,15 @@ function cqRender(){
 
         <!-- Right: data grid -->
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;min-width:280px">
-          ${cqDataBox('Precio venta', fmt(p.precio), 'sv-blue')}
+          ${cqDataBox('Precio venta', fmt(p.price), 'sv-blue')}
           ${p.barcode?cqDataBox('Cód. barras', p.barcode, ''):''}
-          ${p.vence?cqDataBox('Vencimiento', p.vence, isExpired(p.vence)?'sv-red':expiringSoon(p.vence)?'sv-orange':''):''}
+          ${p.expiry?cqDataBox('Vencimiento', p.expiry, isExpired(p.expiry)?'sv-red':expiringSoon(p.expiry)?'sv-orange':''):''}
         </div>
       </div>
 
       <!-- Footer: actions -->
       <div style="display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-        <button class="btn btn-outline btn-sm" onclick="nav('inv');setTimeout(()=>{document.getElementById('inv-q').value='${p.nombre.replace(/'/g,"\'")}';invRender();},100)">📦 Ver en inventario</button>
+        <button class="btn btn-outline btn-sm" onclick="nav('inv');setTimeout(()=>{document.getElementById('inv-q').value='${p.name.replace(/'/g,"\'")}';invRender();},100)">📦 Ver en inventario</button>
         ${p.stock>0?`<button class="btn btn-primary btn-sm" onclick="posAdd('${p.id}');nav('pos')">🛒 Agregar al ticket</button>`:''}
         ${p.stock>0?`<button class="cq-al-ticket-btn" id="cq-btn-${p.id}" onclick="cqAddToTicket('${p.id}')">➕ Al ticket</button>`:`<button class="cq-al-ticket-btn" disabled>Sin stock</button>`}
       </div>
@@ -2832,9 +2832,9 @@ function saveManualItem(){
   // Use a unique manual ID (timestamp-based) so multiple manual items can coexist
   const manId='MAN-'+Date.now();
   // Check if same name manual item already in cart — if so, just increase qty
-  const existing=cart.find(c=>c.manual&&c.nombre.toLowerCase()===nombre.toLowerCase()&&c.precio===precio);
+  const existing=cart.find(c=>c.manual&&c.name.toLowerCase()===nombre.toLowerCase()&&c.price===precio);
   if(existing){ existing.qty+=qty; }
-  else { cart.push({id:manId,nombre,precio,costo:0,qty,manual:true}); }
+  else { cart.push({id:manId,nombre,precio,cost:0,qty,manual:true}); }
   closeModal('m-manual');
   renderCart();
 }
@@ -2859,21 +2859,21 @@ function openImportModal(){
 
 // Column name aliases -> internal field
 const COL_MAP = {
-  'nombre':'nombre','name':'nombre','producto':'nombre',
-  'codigo':'codigo','sku':'codigo','cod':'codigo','código':'codigo','cód':'codigo','código interno':'codigo','codigo interno':'codigo',
+  'name':'name','name':'name','producto':'name',
+  'sku':'sku','sku':'sku','cod':'sku','código':'sku','cód':'sku','código interno':'sku','codigo interno':'sku',
   'barcode':'barcode','codigo de barras':'barcode','código de barras':'barcode','cod barras':'barcode',
   'cód. barras':'barcode','cod. barras':'barcode','cód barras':'barcode','c.barras':'barcode',
   'ean':'barcode','ean13':'barcode','upc':'barcode','gtin':'barcode',
   'departamento':'dept','depto':'dept','dept':'dept','categoria':'dept','categoría':'dept',
   'marca':'lab','laboratorio':'lab','lab':'lab',
-  'precio':'precio','precio venta':'precio','precio de venta':'precio',
-  'costo':'costo','precio costo':'costo','costo unitario':'costo',
+  'price':'price','precio venta':'price','precio de venta':'price',
+  'cost':'cost','precio costo':'cost','costo unitario':'cost',
   'stock':'stock','stock actual':'stock','existencia':'stock','existencias':'stock','cantidad':'stock','qty':'stock',
-  'stock min':'minStock','stock mín':'minStock','minimo':'minStock','mínimo':'minStock','stock minimo':'minStock','stock mínimo':'minStock',
-  'stock max':'maxStock','stock máx':'maxStock','maximo':'maxStock','máximo':'maxStock','stock maximo':'maxStock','stock máximo':'maxStock',
-  'unidad':'unidad','unidad de medida':'unidad',
-  'vencimiento':'vence','caducidad':'vence','fecha vencimiento':'vence','fecha de vencimiento':'vence',
-  'mayoreo':'mayoreo','precio mayoreo':'mayoreo',
+  'stock min':'min','stock mín':'min','minimo':'min','mínimo':'min','stock minimo':'min','stock mínimo':'min',
+  'stock max':'max','stock máx':'max','maximo':'max','máximo':'max','stock maximo':'max','stock máximo':'max',
+  'unit':'unit','unidad de medida':'unit',
+  'vencimiento':'expiry','caducidad':'expiry','fecha vencimiento':'expiry','fecha de vencimiento':'expiry',
+  'pricewholesale':'pricewholesale','precio mayoreo':'pricewholesale',
   'descripcion':'desc','descripción':'desc','desc':'desc','notas':'desc',
 };
 
@@ -2913,7 +2913,7 @@ function previewImportExcel(e){
         });
 
         // Validate
-        const nombre = String(prod.nombre||'').trim();
+        const nombre = String(prod.name||'').trim();
         if(!nombre){
           errCount++;
           rowsHtml.push('<tr><td><span class="badge br">Error</span></td><td colspan="6" style="color:var(--red);font-size:11px">Sin nombre</td></tr>');
@@ -2933,25 +2933,25 @@ function previewImportExcel(e){
         }
 
         const entry = {
-          nombre: nombre,
-          codigo: String(prod.codigo||'').trim(),
+          name: nombre,
+          sku: String(prod.sku||'').trim(),
           barcode: String(prod.barcode||'').trim(),
           dept: String(prod.dept||'').trim(),
           lab: String(prod.lab||'').trim(),
-          precio: num(prod.precio),
-          costo: num(prod.costo),
-          mayoreo: num(prod.mayoreo),
+          price: num(prod.price),
+          cost: num(prod.cost),
+          pricewholesale: num(prod.pricewholesale),
           stock: (prod.stock!==undefined && prod.stock!=='') ? (parseInt(String(prod.stock).replace(/[^0-9-]/g,''))||0) : null,
           // null = column absent from Excel; any number (incl. 0) = use it
-          minStock: parseInt(String(prod.minStock||'0'))||DB.config.minStock,
-          maxStock: parseInt(String(prod.maxStock||'0'))||0,
-          unidad: String(prod.unidad||'Pieza').trim(),
-          vence: toDateStr(prod.vence),
+          min: parseInt(String(prod.min||'0'))||DB.config.min,
+          max: parseInt(String(prod.max||'0'))||0,
+          unit: String(prod.unit||'Pieza').trim(),
+          expiry: toDateStr(prod.expiry),
           desc: String(prod.desc||'').trim(),
           descEnExcel: prod.desc!==undefined, // flag: column was present
         };
 
-        const existing = DB.products.find(function(p){ return p.nombre.toLowerCase()===nombre.toLowerCase(); });
+        const existing = DB.products.find(function(p){ return p.name.toLowerCase()===nombre.toLowerCase(); });
         const isNew = !existing;
         if(isNew) newCount++; else updCount++;
 
@@ -2964,8 +2964,8 @@ function previewImportExcel(e){
         rowsHtml.push('<tr>' +
           '<td>'+badge+'</td>' +
           '<td style="font-weight:700;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+nombre+'</td>' +
-          '<td style="font-size:11px;color:var(--text2)">'+( entry.codigo||'—' )+'</td>' +
-          '<td style="font-family:\'JetBrains Mono\',monospace">'+( entry.precio ? fmt(entry.precio) : '—' )+'</td>' +
+          '<td style="font-size:11px;color:var(--text2)">'+( entry.sku||'—' )+'</td>' +
+          '<td style="font-family:\'JetBrains Mono\',monospace">'+( entry.price ? fmt(entry.price) : '—' )+'</td>' +
           '<td style="font-family:\'JetBrains Mono\',monospace">'+entry.stock+'</td>' +
           '<td style="font-size:11px">'+( entry.dept||'—' )+'</td>' +
           '<td style="font-size:11px">'+( entry.lab||'—' )+'</td>' +
@@ -3001,19 +3001,19 @@ function confirmImportExcel(){
       if(idx>=0){
         // Update fields — stock always replaced with Excel value, desc always saved
         const upd = r.entry;
-        if(upd.codigo)         DB.products[idx].codigo   = upd.codigo;
+        if(upd.sku)         DB.products[idx].sku   = upd.sku;
         if(upd.barcode)        DB.products[idx].barcode  = upd.barcode;
         if(upd.dept)           DB.products[idx].dept     = upd.dept;
         if(upd.lab)            DB.products[idx].lab      = upd.lab;
-        if(upd.precio>0)       DB.products[idx].precio   = upd.precio;
-        if(upd.costo>0)        DB.products[idx].costo    = upd.costo;
-        if(upd.mayoreo>0)      DB.products[idx].mayoreo  = upd.mayoreo;
+        if(upd.price>0)       DB.products[idx].price   = upd.price;
+        if(upd.cost>0)        DB.products[idx].cost    = upd.cost;
+        if(upd.pricewholesale>0)      DB.products[idx].pricewholesale  = upd.pricewholesale;
         // Stock: if column was present in Excel (stock !== null), always use it
         if(upd.stock !== null) DB.products[idx].stock    = upd.stock;
-        if(upd.minStock)       DB.products[idx].minStock = upd.minStock;
-        if(upd.maxStock)       DB.products[idx].maxStock = upd.maxStock;
-        if(upd.unidad)         DB.products[idx].unidad   = upd.unidad;
-        if(upd.vence)          DB.products[idx].vence    = upd.vence;
+        if(upd.min)       DB.products[idx].min = upd.min;
+        if(upd.max)       DB.products[idx].max = upd.max;
+        if(upd.unit)         DB.products[idx].unit   = upd.unit;
+        if(upd.expiry)          DB.products[idx].expiry    = upd.expiry;
         // Desc: always save (even if empty string, user may want to clear it)
         if(upd.descEnExcel)    DB.products[idx].desc     = upd.desc;
         updCount++;
@@ -3023,7 +3023,7 @@ function confirmImportExcel(){
       const e = r.entry;
       if(e.stock === null) e.stock = 0; // default to 0 if column was absent
       e.id = 'P'+String(skuN++).padStart(4,'0');
-      if(!e.codigo) e.codigo = 'INT-'+String(skuN-1).padStart(4,'0');
+      if(!e.sku) e.sku = 'INT-'+String(skuN-1).padStart(4,'0');
       DB.products.push(e);
       newCount++;
     }
@@ -3059,7 +3059,6 @@ function confirmImportExcel(){
 })();
 dbLoad();
 
-// Suscribirse a cambios en Firebase en tiempo real
 function _initFirebaseListeners() {
   if (!window._fbListen) return;
   window._fbListen(
@@ -3067,8 +3066,9 @@ function _initFirebaseListeners() {
       if (JSON.stringify(lista) === JSON.stringify(DB.products)) return;
       DB.products = lista;
       localStorage.setItem('fps_db', JSON.stringify(DB));
+      invRender();
       posRenderGrid();
-      if (typeof renderInventario === 'function') renderInventario();
+      refreshDeptFilters();
     },
     function(lista) { // ventas
       if (JSON.stringify(lista) === JSON.stringify(DB.sales)) return;
@@ -3158,7 +3158,7 @@ function cqAddToTicket(pid) {
     setTimeout(function(){ btn.textContent = '➕ Al ticket'; }, 1500);
   }
   const t = document.getElementById('toast');
-  if (t) { t.textContent = '✅ ' + p.nombre + ' agregado al ticket'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
+  if (t) { t.textContent = '✅ ' + p.name + ' agregado al ticket'; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
 }
 
 // ───── Inventory Context Menu ─────
@@ -3191,13 +3191,13 @@ function invCtxAddStock() {
   if (m) m.classList.remove('open');
   const prod = DB.products.find(function(p){ return p.id === _invCtxId; });
   if (!prod) return;
-  const qty = prompt('¿Cuántas unidades agregar a "' + prod.nombre + '"? (stock actual: ' + prod.stock + ')');
+  const qty = prompt('¿Cuántas unidades agregar a "' + prod.name + '"? (stock actual: ' + prod.stock + ')');
   if (!qty || isNaN(qty)) return;
   prod.stock += parseInt(qty);
   dbSave();
   invRender();
   const t = document.getElementById('toast');
-  if (t) { t.textContent = '📦 +' + qty + ' unidades a ' + prod.nombre; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
+  if (t) { t.textContent = '📦 +' + qty + ' unidades a ' + prod.name; t.style.opacity='1'; setTimeout(function(){t.style.opacity='0';},2500); }
 }
 
 function invCtxHistory() {
@@ -3208,7 +3208,7 @@ function invCtxHistory() {
   const info = related.length
     ? related.map(function(s){ return s.id + ' · ' + new Date(s.fecha).toLocaleDateString('es-MX') + ' · -' + s.items.find(function(i){return i.id===_invCtxId;}).qty + ' uds'; }).join('\n')
     : 'Sin movimientos registrados';
-  alert('Movimientos de ' + (prod ? prod.nombre : 'producto') + ':\n\n' + info);
+  alert('Movimientos de ' + (prod ? prod.name : 'producto') + ':\n\n' + info);
 }
 
 function invCtxDelete() {
@@ -3219,18 +3219,18 @@ function invCtxDelete() {
 
 // ───── SKU automático ─────
 function genSKU(p) {
-  if (p.codigo) return p.codigo;
+  if (p.sku) return p.sku;
   const prefix = (p.dept||'GEN').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z]/g,'').substring(0,3).padEnd(3,'X');
   const seq = String(DB.products.indexOf(p) + 1).padStart(4,'0');
-  p.codigo = prefix + '-' + seq;
-  return p.codigo;
+  p.sku = prefix + '-' + seq;
+  return p.sku;
 }
 
 function assignSKUs() {
   DB.products.forEach(function(p, i) {
-    if (!p.codigo) {
+    if (!p.sku) {
       const prefix = (p.dept||'GEN').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z]/g,'').substring(0,3).padEnd(3,'X');
-      p.codigo = prefix + '-' + String(i+1).padStart(4,'0');
+      p.sku = prefix + '-' + String(i+1).padStart(4,'0');
     }
   });
   dbSave();
@@ -3248,10 +3248,10 @@ function exportSalesExcel() {
         'Fecha':        new Date(s.fecha).toLocaleDateString('es-MX'),
         'Hora':         new Date(s.fecha).toLocaleTimeString('es-MX'),
         'Cajero':       s.cajero,
-        'Producto':     item.nombre,
+        'Producto':     item.name,
         'Cantidad':     item.qty,
-        'Precio Unit.': item.precio,
-        'Subtotal':     item.precio * item.qty,
+        'Precio Unit.': item.price,
+        'Subtotal':     item.price * item.qty,
         'Descuento':    i === 0 ? (s.descAmt||0) : 0,
         'IVA':          i === 0 ? (s.iva||0) : 0,
         'Total':        i === 0 ? s.total : '',
@@ -3281,7 +3281,7 @@ function _buildCorteWAUrlAndShow(corteRecord, todaySales) {
   const methodLinesWA = parts.join('\n');
 
   const text = '🏧 *CORTE DE CAJA*\n' +
-    '🏥 ' + (DB.config.nombre||'Farmacia IRE') + '\n' +
+    '🏥 ' + (DB.config.name||'Farmacia IRE') + '\n' +
     '📅 ' + now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) + '\n' +
     '🕐 ' + now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) + '\n' +
     '─────────────────\n' +
