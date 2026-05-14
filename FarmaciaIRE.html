@@ -520,11 +520,11 @@ tbody td{padding:10px 14px;vertical-align:middle}
 
 /* ── Google Drive Sync ── */
 #drive-btn{
-  display:flex;align-items:center;gap:8px;width:100%;margin-top:8px;
-  padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+  display:flex;align-items:center;gap:8px;width:100%;margin-top:6px;
+  padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
   background:rgba(255,255,255,.06);cursor:pointer;font-family:inherit;
-  font-size:12px;font-weight:600;color:rgba(255,255,255,.8);
-  transition:background .15s;text-align:left;
+  font-size:11px;font-weight:600;color:rgba(255,255,255,.8);
+  transition:background .15s;text-align:left;box-sizing:border-box;
 }
 #drive-btn:hover{background:rgba(255,255,255,.12)}
 #drive-icon{width:16px;height:16px;flex-shrink:0}
@@ -598,18 +598,12 @@ tbody td{padding:10px 14px;vertical-align:middle}
         <div class="user-name" id="sb-cajero">Administrador</div>
         <div class="user-role" id="sb-role">Administrador</div>
       </div>
-      <button onclick="logoutPrompt()" title="Cerrar sesión" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);font-size:16px;padding:2px" title="Salir">🚪</button>
+      <button onclick="logoutPrompt()" title="Cerrar sesión" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);font-size:16px;padding:2px">🚪</button>
     </div>
-  <!-- Google Drive Sync -->
-  <div style="padding:4px 0 0">
+    <!-- Google Drive Sync -->
     <button id="drive-btn" onclick="driveConnect()">
-      <svg id="drive-icon" viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-        <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-        <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0 -1.2 4.5h27.5z" fill="#00ac47"/>
-        <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.502l5.852 11.5z" fill="#ea4335"/>
-        <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-        <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-        <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 27h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+      <svg id="drive-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width:16px;height:16px;flex-shrink:0;fill:currentColor;opacity:.9">
+        <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
       </svg>
       <span id="drive-btn-label">Conectar Drive</span>
     </button>
@@ -618,7 +612,6 @@ tbody td{padding:10px 14px;vertical-align:middle}
       <span id="drive-status-text">—</span>
     </div>
   </div>
-</div>
 
 <!-- ══════════ MAIN ══════════ -->
 <div id="main">
@@ -3865,7 +3858,7 @@ function _driveMerge(remote) {
     if (typeof renderTodaySales === 'function') renderTodaySales();
     if (typeof renderReports    === 'function') renderReports();
     if (typeof fillDeptList     === 'function') fillDeptList();
-    showToast('🔄 Datos sincronizados desde Drive');
+    // sync silent
   }
 }
 
