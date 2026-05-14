@@ -259,21 +259,22 @@ tbody td{padding:10px 14px;vertical-align:middle}
 
 
 /* ── Inventory column widths ── */
-#inv-wrap th, #inv-wrap td { padding:5px 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-#inv-wrap th:nth-child(1){width:90px}   /* Cód.Barras */
-#inv-wrap th:nth-child(2){width:auto}   /* Producto */
-#inv-wrap th:nth-child(3){width:80px}   /* Desc */
-#inv-wrap th:nth-child(4){width:70px}   /* Marca */
-#inv-wrap th:nth-child(5){width:80px}   /* Depto */
-#inv-wrap th:nth-child(6){width:70px}   /* Precio */
-#inv-wrap th:nth-child(7){width:60px}   /* Costo */
-#inv-wrap th:nth-child(8){width:45px;text-align:center}  /* Stock */
-#inv-wrap th:nth-child(9){width:35px;text-align:center}  /* Mín */
-#inv-wrap th:nth-child(10){width:35px;text-align:center} /* Máx */
-#inv-wrap th:nth-child(11){width:60px}  /* Vence */
-#inv-wrap th:nth-child(12){width:65px}  /* Estado */
-#inv-wrap th:nth-child(13){width:54px;text-align:center} /* Acciones */
+#inv-wrap th, #inv-wrap td { padding:4px 5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#inv-wrap th:nth-child(1){width:75px}   /* Cód */
+#inv-wrap th:nth-child(2){width:auto;min-width:110px} /* Producto */
+#inv-wrap th:nth-child(3){width:65px}   /* Desc */
+#inv-wrap th:nth-child(4){width:60px}   /* Marca */
+#inv-wrap th:nth-child(5){width:70px}   /* Depto */
+#inv-wrap th:nth-child(6){width:58px}   /* Precio */
+#inv-wrap th:nth-child(7){width:50px}   /* Costo */
+#inv-wrap th:nth-child(8){width:36px;text-align:center}  /* Stk */
+#inv-wrap th:nth-child(9){width:30px;text-align:center}  /* Mín */
+#inv-wrap th:nth-child(10){width:30px;text-align:center} /* Máx */
+#inv-wrap th:nth-child(11){width:54px}  /* Vence */
+#inv-wrap th:nth-child(12){width:58px}  /* Estado */
+#inv-wrap th:nth-child(13){width:64px;text-align:center} /* Acciones */
 #inv-wrap td { font-size:11px; }
+#inv-wrap .btn-icon { font-size:14px; padding:2px 4px; }
 /* ══════════════════════ VENTAS ══════════════════════ */
 #page-ventas{flex-direction:column}
 .vt-bar{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--card);flex-wrap:wrap}
@@ -677,10 +678,6 @@ tbody td{padding:10px 14px;vertical-align:middle}
       </div>
 
       <div id="pos-cart">
-        <!-- today-sales hidden in cart, kept for renderTodaySales() compatibility -->
-        <div id="today-sales-wrap" style="display:none">
-          <div id="today-sales-list"></div>
-        </div>
         <div class="cart-h">
           <h4>🛒 Ticket de venta</h4>
           <div style="display:flex;gap:6px">
@@ -747,7 +744,7 @@ tbody td{padding:10px 14px;vertical-align:middle}
       <div id="inv-wrap" class="tbl-scroll">
         <table>
           <thead><tr>
-            <th>Cód. Barras</th><th>Producto</th><th>Descripción / Notas</th><th>Marca</th><th>Depto.</th><th>Precio</th><th>Costo</th><th>Stock</th><th>Mín.</th><th>Máx.</th><th>Vence</th><th>Estado</th><th>Acciones</th>
+            <th>Cód.</th><th>Producto</th><th>Desc.</th><th>Marca</th><th>Depto.</th><th>Precio</th><th>Costo</th><th>Stk</th><th>Mín</th><th>Máx</th><th>Vence</th><th>Estado</th><th></th>
           </tr></thead>
           <tbody id="inv-tbody"></tbody>
         </table>
@@ -1330,7 +1327,8 @@ function updateTopbarDate(){
 setInterval(updateTopbarDate,1000);updateTopbarDate();
 
 // ════════════════════════════ HELPERS ════════════════════════════
-const fmt = v=>`${config.currency}${parseFloat(v||0).toFixed(2)}`;
+const fmt  = v=>`${config.currency}${parseFloat(v||0).toFixed(2)}`;
+const fmtN = v=>`$${parseFloat(v||0).toFixed(2)}`; // Sin prefijo de moneda (para inventario)
 function today(){return new Date().toISOString().split('T')[0];}
 function isExpired(d){return d&&new Date(d)<new Date();}
 function expiringSoon(d){if(!d)return false;const diff=(new Date(d)-new Date())/864e5;return diff>=0&&diff<=60;}
@@ -1881,8 +1879,8 @@ function renderInventory(){
       <td style="font-size:11px;color:var(--text2);font-style:italic;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.desc||'—'}</td>
       <td style="color:var(--text2);font-size:12px">${p.lab||'—'}</td>
       <td><span class="badge bb">${p.dept||'—'}</span></td>
-      <td style="font-family:'JetBrains Mono',monospace">${fmt(p.price)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;color:var(--text2)">${fmt(p.cost||0)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${fmtN(p.price)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--text2)">${fmtN(p.cost||0)}</td>
       <td style="font-family:'JetBrains Mono',monospace;font-weight:700">${p.stock}</td>
       <td style="color:var(--text2)">${p.min||ms2}</td>
       <td style="color:var(--text2)">${p.max||'—'}</td>
@@ -3086,8 +3084,7 @@ updateCartTotals();
 vtSetDates();
 renderUserList();
 assignSKUs();
-renderTodaySales();
-
+// renderTodaySales() — disabled in POS panel
 
 // ═══════════════════════════════════════════════════════════
 // MEJORAS MOVIL: Nuevas funciones portadas de Movil.html
