@@ -1926,6 +1926,7 @@ function saveProduct(){
   if(!nom){alert('El nombre es obligatorio.');return;}
   const editId=document.getElementById('pf-id').value;
   const data={
+    _ts: Date.now(),
     name:nom,
     sku:document.getElementById('pf-barcode').value.trim()||('SKU-'+String(idCounter).padStart(4,'0')),
     barcode:document.getElementById('pf-barcode').value.trim(),
@@ -3154,6 +3155,7 @@ function ctxAddStock() {
   const qty = prompt('¿Cuántas unidades agregar a "' + prod.name + '"? (stock actual: ' + prod.stock + ')');
   if (!qty || isNaN(qty)) return;
   prod.stock += parseInt(qty);
+  prod._ts = Date.now();
   save('products', products);
   renderInventory();
   const t = document.getElementById('toast');
@@ -3780,12 +3782,17 @@ async function _driveGetFileId() {
 }
 
 function _driveBuildPayload() {
+  const now = Date.now();
+  // Stamp _ts on each product/user so Movil can resolve conflicts correctly
+  const stampedProducts = products.map(p => ({ ...p, _ts: p._ts || now }));
+  const stampedUsers = (users||[]).map(u => ({ ...u, _ts: u._ts || now }));
   return JSON.stringify({
-    _v: 2, _ts: Date.now(),
+    _v: 2, _ts: now,
     _device: config.name || 'Farmacia',
-    products, sales,
+    products: stampedProducts,
+    sales,
     config: { ...config, logo: null },
-    users,
+    users: stampedUsers,
     cortes: typeof cortes !== 'undefined' ? cortes : [],
   });
 }
@@ -3864,7 +3871,8 @@ function _driveMerge(remote) {
     rem.forEach(r => {
       const key = String(r.id);
       const l = map.get(key);
-      const rTs = r._ts || 0, lTs = l ? (l._ts || 0) : -1;
+      const rTs = r._ts || 0;
+      const lTs = l ? (l._ts || 0) : -1;
       if (!l || rTs > lTs) { map.set(key, r); upd = true; }
     });
     return { arr: Array.from(map.values()), changed: upd };
