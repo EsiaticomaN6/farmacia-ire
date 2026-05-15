@@ -272,9 +272,9 @@ tbody td{padding:10px 14px;vertical-align:middle}
 #inv-wrap th:nth-child(10){width:30px;text-align:center} /* Máx */
 #inv-wrap th:nth-child(11){width:54px}  /* Vence */
 #inv-wrap th:nth-child(12){width:58px}  /* Estado */
-#inv-wrap th:nth-child(13){width:64px;text-align:center} /* Acciones */
+#inv-wrap th:nth-child(13){width:88px;text-align:center} /* Acciones */
 #inv-wrap td { font-size:11px; }
-#inv-wrap .btn-icon { font-size:14px; padding:2px 4px; }
+#inv-wrap .btn-icon { font-size:13px; padding:1px 3px; min-width:22px; }
 /* ══════════════════════ VENTAS ══════════════════════ */
 #page-ventas{flex-direction:column}
 .vt-bar{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--card);flex-wrap:wrap}
@@ -1329,6 +1329,7 @@ setInterval(updateTopbarDate,1000);updateTopbarDate();
 // ════════════════════════════ HELPERS ════════════════════════════
 const fmt  = v=>`${config.currency}${parseFloat(v||0).toFixed(2)}`;
 const fmtN = v=>{ const n=parseFloat(v||0); return '$'+(Number.isInteger(n)?n:n.toFixed(2)); }; // Sin decimales si es entero
+const fmtR = v=>'$'+parseFloat(v||0).toFixed(2); // Reportes: siempre $ sin prefijo moneda
 function today(){
   const d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -2177,12 +2178,12 @@ function renderReports(){
   document.getElementById('r-label-tickets').textContent='Tickets '+lbl;
 
   // KPIs
-  document.getElementById('r-venta').textContent=fmt(totalVenta);
-  document.getElementById('r-ganancia').textContent=fmt(ganancia);
+  document.getElementById('r-venta').textContent=fmtR(totalVenta);
+  document.getElementById('r-ganancia').textContent=fmtR(ganancia);
   document.getElementById('r-tickets').textContent=tickets;
-  document.getElementById('r-promedio').textContent=fmt(promedio);
-  document.getElementById('r-efectivo').textContent=fmt(efectivo);
-  document.getElementById('r-tarjeta').textContent=fmt(tarjeta);
+  document.getElementById('r-promedio').textContent=fmtR(promedio);
+  document.getElementById('r-efectivo').textContent=fmtR(efectivo);
+  document.getElementById('r-tarjeta').textContent=fmtR(tarjeta);
   const ms=config.minstock;
   document.getElementById('r-prods').textContent=products.length;
   document.getElementById('r-low').textContent=products.filter(p=>p.stock>0&&p.stock<=(p.min||ms)).length;
@@ -2196,7 +2197,7 @@ function renderReports(){
       <div style="flex:1;background:var(--bg);border-radius:4px;height:8px;overflow:hidden">
         <div style="background:var(--accent);width:${pct}%;height:100%;border-radius:4px;transition:width .4s"></div>
       </div>
-      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;width:72px;text-align:right">${fmt(val)}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-weight:700;width:72px;text-align:right">${fmtR(val)}</span>
       <span style="color:var(--text3);width:36px;text-align:right;font-size:11px">${pct}%</span>
     </div>`;
   }
@@ -2271,7 +2272,7 @@ function renderReports(){
     <td style="font-weight:800;color:var(--accent)">${i+1}</td>
     <td style="font-weight:700">${p.name}</td>
     <td style="font-family:'JetBrains Mono',monospace">${p.qty}</td>
-    <td style="font-family:'JetBrains Mono',monospace;color:var(--green)">${fmt(p.rev)}</td>
+    <td style="font-family:'JetBrains Mono',monospace;color:var(--green)">${fmtR(p.rev)}</td>
   </tr>`).join('');
 }
 
@@ -2579,12 +2580,12 @@ function corteDeCaja(){
   const promedio   = todaySales.length ? totalVenta/todaySales.length : 0;
 
   document.getElementById('c-tickets').textContent   = todaySales.length;
-  document.getElementById('c-total').textContent     = fmt(totalVenta);
+  document.getElementById('c-total').textContent     = fmtR(totalVenta);
   document.getElementById('c-ganancia').textContent  = fmt(ganancia);
   document.getElementById('c-articulos').textContent = articulos;
   document.getElementById('c-promedio').textContent  = fmt(promedio);
   document.getElementById('c-descuentos').textContent= fmt(descuentos);
-  document.getElementById('c-total2').textContent    = fmt(totalVenta);
+  document.getElementById('c-total2').textContent    = fmtR(totalVenta);
 
   // Desglose pago
   const ef  = todaySales.filter(s=>((s.pago||s.payment)==='efectivo'||(s.pago||s.payment)==='cash'||s.payment==='cash')).reduce((a,s)=>a+s.total,0);
