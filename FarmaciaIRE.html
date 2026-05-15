@@ -1328,7 +1328,7 @@ setInterval(updateTopbarDate,1000);updateTopbarDate();
 
 // ════════════════════════════ HELPERS ════════════════════════════
 const fmt  = v=>`${config.currency}${parseFloat(v||0).toFixed(2)}`;
-const fmtN = v=>`$${parseFloat(v||0).toFixed(2)}`; // Sin prefijo de moneda (para inventario)
+const fmtN = v=>{ const n=parseFloat(v||0); return '$'+(Number.isInteger(n)?n:n.toFixed(2)); }; // Sin decimales si es entero
 function today(){
   const d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
