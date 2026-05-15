@@ -1329,7 +1329,15 @@ setInterval(updateTopbarDate,1000);updateTopbarDate();
 // ════════════════════════════ HELPERS ════════════════════════════
 const fmt  = v=>`${config.currency}${parseFloat(v||0).toFixed(2)}`;
 const fmtN = v=>`$${parseFloat(v||0).toFixed(2)}`; // Sin prefijo de moneda (para inventario)
-function today(){return new Date().toISOString().split('T')[0];}
+function today(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function localDateStr(iso){
+  // Convert ISO string to local date string (avoids UTC day-shift at night)
+  const d=new Date(iso);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 function isExpired(d){return d&&new Date(d)<new Date();}
 function expiringSoon(d){if(!d)return false;const diff=(new Date(d)-new Date())/864e5;return diff>=0&&diff<=60;}
 function getDepts(){return[...new Set(products.map(p=>p.dept).filter(Boolean))].sort();}
@@ -1675,9 +1683,10 @@ function confirmedSale(){
     sub,descPct:desc,descAmt:damt,iva:ivaAmt,total,payment:selectedPayment,pago:selectedPayment,
     received:0,recibido,cambio
   };
+  const saleTs = Date.now();
   cart.forEach(item=>{
     const p=products.find(x=>x.id===item.id);
-    if(p) p.stock=Math.max(0,p.stock-item.qty);
+    if(p){ p.stock=Math.max(0,p.stock-item.qty); p._ts=saleTs; }
   });
   save('products', products);
   sales.unshift(sale);
@@ -2035,7 +2044,7 @@ function exportInvFiltrado(tipo){
 function vtSetDates(){
   if(!document.getElementById('vt-from').value){
     const d=new Date();d.setDate(1);
-    document.getElementById('vt-from').value=d.toISOString().split('T')[0];
+    document.getElementById('vt-from').value=localDateStr(d.toISOString());
     document.getElementById('vt-to').value=today();
   }
 }
@@ -2054,7 +2063,7 @@ function renderSales(){
   const to=document.getElementById('vt-to').value;
   const tbody=document.getElementById('vt-tbody');
   const filteredSales=sales.filter(s=>{
-    const d=(s.fecha||s.date||'').split('T')[0];
+    const d=localDateStr(s.fecha||s.date||new Date().toISOString());
     return(!q||( s.id||'').toLowerCase().includes(q)||(s.cliente||'').toLowerCase().includes(q))&&(!from||d>=from)&&(!to||d<=to);
   });
   if(!filteredSales.length){tbody.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)">Sin ventas en este período</td></tr>`;return;}
@@ -2062,7 +2071,7 @@ function renderSales(){
   // Agrupar por día
   const byDay = {};
   filteredSales.forEach(s=>{
-    const dayKey=(s.fecha||s.date||'').split('T')[0];
+    const dayKey=localDateStr(s.fecha||s.date||new Date().toISOString());
     if(!byDay[dayKey]) byDay[dayKey]=[];
     byDay[dayKey].push(s);
   });
