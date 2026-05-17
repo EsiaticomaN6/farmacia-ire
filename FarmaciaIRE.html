@@ -570,6 +570,8 @@ tbody td{padding:10px 14px;vertical-align:middle}
     <button class="nav-btn" id="nav-btn-usuarios" onclick="nav('usuarios')"><span class="icon">👤</span>Usuarios</button>
     <button class="nav-btn" onclick="nav('config')"><span class="icon">⚙️</span>Configuración</button>
     <button class="nav-btn" onclick="showGDriveModal()" id="nav-btn-gdrive"><span class="icon">☁</span><span>Google Drive</span><span id="gdrive-nav-dot" style="width:8px;height:8px;border-radius:50%;background:#6b7280;margin-left:auto;flex-shrink:0;display:inline-block;"></span></button>
+    <button class="nav-btn" id="nav-btn-gdrive-force" onclick="GDrive.syncNow('forceDownload')" style="padding-left:32px;font-size:11px;opacity:0.75;display:none;"><span class="icon">📥</span><span>Forzar descarga</span></button>
+    <button class="nav-btn" id="nav-btn-gdrive-reset" onclick="gdriveResetLocal()" style="padding-left:32px;font-size:11px;opacity:0.75;display:none;"><span class="icon">🗑️</span><span>Borrar datos locales</span></button>
   </nav>
   <div class="sidebar-footer">
     <div class="user-chip">
@@ -1226,7 +1228,9 @@ function dbLoad(){
   try{
     const d = JSON.parse(localStorage.getItem('fps_db'));
     if(d){
-      DB.products=d.products||[]; DB.sales=d.sales||[];
+      DB.products=d.products||[]; 
+      // Normalizar fecha en ventas al cargar (acepta 'date' del móvil o 'fecha' del iPad)
+      DB.sales=(d.sales||[]).map(s=>({...s, fecha: s.fecha||s.date||''}));
       DB.clientes=d.clientes||[]; DB.entradas=d.entradas||[];
       DB.usuarios=d.usuarios||[];
       DB.cortes=d.cortes||[];
@@ -3036,6 +3040,11 @@ const GDrive = (() => {
     const dot = document.getElementById('gdrive-nav-dot');
     const c = {ok:'#22c55e', warn:'#f97316', error:'#ef4444', sync:'#4f6ef7', off:'#6b7280'};
     if (dot) { dot.style.background = c[type]||c.off; dot.style.opacity = type==='sync'?'0.4':'1'; }
+    const connected = (type==='ok'||type==='warn'||type==='sync');
+    const forceBtn = document.getElementById('nav-btn-gdrive-force');
+    const resetBtn = document.getElementById('nav-btn-gdrive-reset');
+    if (forceBtn) forceBtn.style.display = connected ? 'flex' : 'none';
+    if (resetBtn) resetBtn.style.display = connected ? 'flex' : 'none';
   }
   function setModalMsg(msg) {
     const el = document.getElementById('gdrive-modal-status');
@@ -3387,8 +3396,10 @@ const GDrive = (() => {
 
   async function init() {
     const s = loadSettings();
-    if (!s.enabled || !s.clientId) { setDot('off'); return; }
-    _clientId = s.clientId; _fileId = s.fileId||null;
+    // Usar el Client ID conocido si no hay uno guardado
+    const clientId = s.clientId || (typeof GDRIVE_CLIENT_ID !== 'undefined' ? GDRIVE_CLIENT_ID : '');
+    if (!s.enabled || !clientId) { setDot('off'); return; }
+    _clientId = clientId; _fileId = s.fileId||null;
     setDot('sync'); setModalMsg('Reconectando…');
     try {
       await getToken(false); // reconexión silenciosa
@@ -4060,11 +4071,14 @@ document.getElementById('sc-overlay').addEventListener('click', function(e){
 </div>
 
 <script>
+const GDRIVE_CLIENT_ID = '171306722069-2vb5dm3l7afd2oq5fjg6lfkuosp0rfl0.apps.googleusercontent.com';
+
 function showGDriveModal() {
   const modal = document.getElementById('gdrive-modal');
   modal.style.display = 'flex';
   const s = GDrive.loadSettings();
-  document.getElementById('gdrive-client-id-input').value = s.clientId || '';
+  // Pre-cargar siempre el Client ID conocido
+  document.getElementById('gdrive-client-id-input').value = s.clientId || GDRIVE_CLIENT_ID;
   const connected = GDrive.isEnabled();
   document.getElementById('gdrive-connect-btn').style.display    = connected ? 'none'  : 'flex';
   document.getElementById('gdrive-disconnect-btn').style.display = connected ? 'flex'  : 'none';
@@ -4088,8 +4102,22 @@ async function gdriveConnect() {
     document.getElementById('gdrive-disconnect-btn').style.display = 'none';
   }
 }
+async function gdriveResetLocal() {
+  if (!confirm('¿Borrar TODOS los datos?\n\nEsto eliminará inventario, ventas, usuarios y configuración tanto en este dispositivo como en Google Drive.\n\nEsta acción NO se puede deshacer.')) return;
+  // Borrar local
+  localStorage.removeItem('fps_db');
+  localStorage.removeItem('fps_ctrs');
+  DB.products=[]; DB.sales=[]; DB.clientes=[]; DB.entradas=[]; DB.usuarios=[]; DB.cortes=[];
+  skuN=1; saleN=1; cliN=1; entN=1; userN=1;
+  dbSave();
+  try { invRender(); } catch(e){}
+  try { ventasRender(); } catch(e){}
+  // Borrar también en Drive (subir snapshot vacío)
+  try { await GDrive.syncNow('upload'); } catch(e){}
+  alert('✅ Datos borrados en este dispositivo y en Google Drive.');
+}
+
 function gdriveDisconnect() {
-  GDrive.disconnect();
   document.getElementById('gdrive-modal-status').textContent = 'Desconectado de Google Drive';
   document.getElementById('gdrive-connect-btn').style.display    = 'flex';
   document.getElementById('gdrive-disconnect-btn').style.display = 'none';
