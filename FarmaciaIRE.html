@@ -2233,7 +2233,7 @@ function renderReports(){
     // Days of month
     chartTitle.textContent='Ventas por día (este mes)';
     sales.forEach(s=>{
-      const k=(s.fecha||s.date).slice(8,10); // day 01–31
+      const k=localDateStr(s.fecha||s.date||new Date().toISOString()).slice(8,10); // day 01–31
       buckets[k]=(buckets[k]||0)+s.total;
     });
   }
